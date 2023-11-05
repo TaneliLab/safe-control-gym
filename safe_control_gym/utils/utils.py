@@ -4,7 +4,7 @@
 import argparse
 import datetime
 import time
-import gym
+import gymnasium
 import json
 import os
 import random
