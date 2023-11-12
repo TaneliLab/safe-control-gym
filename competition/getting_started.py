@@ -49,7 +49,7 @@ def run(test=False):
 
     # Load configuration.
     CONFIG_FACTORY = ConfigFactory()
-    config = CONFIG_FACTORY.merge()
+    config = CONFIG_FACTORY.merge() # important? where is the config?
 
     # Testing (without pycffirmware).
     if test:

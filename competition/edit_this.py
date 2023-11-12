@@ -133,6 +133,7 @@ class Controller():
                 else:
                     waypoints.append((g[0], g[1]-0.3, height))
                     waypoints.append((g[0], g[1]+0.3, height))
+            # waypoints.append((g[0], g[1], height))
         waypoints.append([initial_info["x_reference"][0], initial_info["x_reference"][2], initial_info["x_reference"][4]])
 
         # Polynomial fit.
