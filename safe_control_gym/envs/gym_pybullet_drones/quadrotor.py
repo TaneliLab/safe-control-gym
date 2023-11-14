@@ -8,7 +8,7 @@ import os
 import math
 from copy import deepcopy
 import casadi as cs
-from gymnasium import spaces
+from gym import spaces
 import numpy as np
 import pybullet as p
 

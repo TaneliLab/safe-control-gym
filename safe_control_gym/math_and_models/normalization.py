@@ -4,7 +4,7 @@
 import numpy as np
 import torch
 
-from gymnasium.spaces import Box
+from gym.spaces import Box
 
 
 def normalize_angle(x):
