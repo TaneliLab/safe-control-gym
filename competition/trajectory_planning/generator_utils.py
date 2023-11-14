@@ -41,8 +41,8 @@ def get_vecs_angle(vec1, vec2):
     return math.acos(t)
 
 
-def get_distance_matrix(gates=[], start_point=[0.0,0.0,0.0], end_point=[5.0,5.0,5.0]):
-
+def get_distance_matrix(gates=[], start_point=[0.0,0.0,0.0], end_point=[5.0,5.0,5.0]):#why 5,5,5
+    
     def gates_to_end_dist(num_of_gates):
         dist = np.zeros(num_of_gates+1)
         dist[0] = np.Inf
@@ -119,5 +119,7 @@ def tsp_dp(dist_matrix):
     min_length = _dp(0, range(1, dist_matrix.shape[0]))
     trajectory = track_back()
     trajectory.append(num_of_mid_point+1)
-    
+    # show gate_sequence_plan
+    print("gate_sequence_plan")
+    print(trajectory)
     return trajectory, min_length

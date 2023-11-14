@@ -96,9 +96,11 @@ class TrajGenerator:
             seq = range(0, len(self.gates)+2)
         else:
             dist_matrix = get_distance_matrix(gates=self.gates, start_point=self.start_pos, end_point=self.stop_pos)
-            seq, _ = tsp_dp(dist_matrix)
+            seq, _ = tsp_dp(dist_matrix)  # trajectory, min_length
             seq = np.array(seq)
-        self.gate_sequence = seq
+        self.gate_sequence = seq # trajectory
+        print("gate_sequence")
+        print(seq)
 
     def _find_init_path(self):
         gates = self.gates
@@ -170,8 +172,9 @@ class TrajGenerator:
 
         modified_path.append(gates[-1][0:3].tolist())
         self.init_path = modified_path
-
+        
         print("\033[0;33;40mInitial infeasible path found.\033[0m")
+        print(modified_path) #semms 保留小数点后几位
 
     def _path_correct(self):
         waypoints = np.array(self.init_path)
@@ -253,6 +256,7 @@ class TrajGenerator:
         self.path = path
 
         print("\033[0;32;40mInitial feasible path found!\033[0m")
+        print(self.path)
 
     def _trajectory_plan(self, traj_max_vel=1.0, traj_gamma=150):
         waypoints = self.path
@@ -273,6 +277,7 @@ class TrajGenerator:
         self.pos_trajectory = np.array([generator.get_des_state(t).pos for t in timestamp])
 
         print("\033[0;32;40mPlanning finished.\033[0m")
+        print(self.pos_trajectory)
     
     def _intersect_point(self, p): # find a collision-free point from p that is close to self.path and insert that point to self.path
         dist = np.Inf
