@@ -1,6 +1,6 @@
 import pybullet as p
 from competition.trajectory_planning.generator_utils import *
-
+import matplotlib.pyplot as plt
 class TrajGenerator:
 
     def __init__(self, params, gates, obstacles):
@@ -16,6 +16,7 @@ class TrajGenerator:
             gates[i][2] = self.gate_height[int(gates[i][6])]
         self.gates = gates[0:6] if gates.ndim == 1 else gates[:,0:6]
         self.obstacles = np.array(obstacles)
+        print("obstacles", obstacles)
         self.episode_len_sec = params["ctrl_time"]
         self.ctrl_freq = params["ctrl_freq"]
         self.ctrl_dt = 1.0 / self.ctrl_freq
@@ -32,11 +33,51 @@ class TrajGenerator:
 
         self.traj_max_vel = params["traj_max_vel"]
         self.traj_gamma = params["traj_gamma"]
+        self._gate_sequence_plan()  # self.gate_sequence 
+        self._find_init_path() # self.init_path
+        self._path_correct()  # self.path
+        self._trajectory_plan() # self.pos_trajectory
 
-        self._gate_sequence_plan()
-        self._find_init_path()
-        self._path_correct()
-        self._trajectory_plan()
+        # Plot waypoints
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        obstacle_x, obstacle_y,_,_,_,_ = zip(*self.obstacles)
+        for i in range(len(obstacle_x)):
+            x_cylinder, y_cylinder, z_cylinder = self.generate_cylinder_points(obstacle_x[i],obstacle_y[i])
+            # X_cylinder, Y_cylinder = np.meshgrid(x_cylinder, y_cylinder)
+            # ax.plot_surface(X_cylinder, Y_cylinder, np.tile(z_cylinder, (len(x_cylinder), 1)), color='black', alpha=0.6)
+            ax.plot_trisurf(x_cylinder, y_cylinder, z_cylinder, color='black', alpha=0.6)
+        
+
+        # x_coords_gate, y_coords_gate, z_coords_gate = zip(*self.gate_sequence)
+        gates_x, gates_y,gates_z,_,_,_ = zip(*self.gates)
+        x_coords_init, y_coords_init, z_coords_init = zip(*self.init_path)
+        x_coords_path, y_coords_path, z_coords_path = zip(*self.path)
+        x_coords_pos, y_coords_pos, z_coords_pos = zip(*self.pos_trajectory)
+       
+        ax.scatter(gates_x, gates_y, gates_z, c='red', marker='o',alpha=1,s=30,label="gates")
+        # ax.scatter(x_coords_gate, y_coords_gate, z_coords_gate, c='red', marker='o')
+        ax.scatter(x_coords_init, y_coords_init, z_coords_init, c='purple', marker='o',alpha=0.8,label="init_path")
+        ax.scatter(x_coords_path, y_coords_path, z_coords_path, c='green', marker='s',alpha=0.3, label="path_correct")
+        ax.scatter(x_coords_pos, y_coords_pos, z_coords_pos, c='blue', marker='+',alpha=0.3,label="route")
+
+        # Set labels for the axes
+        ax.set_xlabel('X Label')
+        ax.set_ylabel('Y Label')
+        ax.set_zlabel('Z Label')
+        ax.legend()
+
+        # Show the plot
+        plt.savefig("Way_points.png")
+        plt.show()
+
+
+    def generate_cylinder_points(self, obstacle_x, obstacle_y, height=1, num_points=100):
+        theta = np.linspace(0, 2 * np.pi, num_points)
+        x = self.uav_radius * np.cos(theta) + obstacle_x
+        y = self.uav_radius * np.sin(theta) + obstacle_y
+        z = np.linspace(0, height, num_points)
+        return x, y, z
 
     def _if_pos_collide_with_obstacles(self, pos, uav_radius=0.075, obstacle_geo=[1.0,0.075]):
         # obstacle_geo = [height, radius]
@@ -175,6 +216,18 @@ class TrajGenerator:
         
         print("\033[0;33;40mInitial infeasible path found.\033[0m")
         print(modified_path) #semms 保留小数点后几位
+        # x_coords, y_coords, z_coords = zip(*modified_path)
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.scatter(x_coords, y_coords, z_coords, c='r', marker='o')
+
+        # # Set labels for the axes
+        # ax.set_xlabel('X Label')
+        # ax.set_ylabel('Y Label')
+        # ax.set_zlabel('Z Label')
+
+        # # Show the plot
+        # plt.show()
 
     def _path_correct(self):
         waypoints = np.array(self.init_path)
@@ -257,6 +310,7 @@ class TrajGenerator:
 
         print("\033[0;32;40mInitial feasible path found!\033[0m")
         print(self.path)
+
 
     def _trajectory_plan(self, traj_max_vel=1.0, traj_gamma=150):
         waypoints = self.path

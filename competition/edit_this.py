@@ -143,7 +143,7 @@ class Controller():
         obstacle_geo = [initial_info['obstacle_dimensions']['height'], initial_info['obstacle_dimensions']['radius'] + robust_radius]
         gate_geo = [initial_info['gate_dimensions']['tall']['edge'], 0.05, 0.05]
         gate_height = [initial_info['gate_dimensions']['tall']['height'], initial_info['gate_dimensions']['low']['height']]
-        
+        print("gate_height", gate_height)
         start_pos = [initial_obs[0], initial_obs[2], initial_obs[4]]
         if use_firmware:
             start_height = np.average(gate_height)
@@ -158,9 +158,10 @@ class Controller():
                         "path_insert_point_dist_min": adjustable_params['path_insert_point_dist_min'],
                         "gate_waypoint_safe_dist": adjustable_params['gate_waypoint_safe_dist'],
                         "traj_max_vel": adjustable_params['traj_max_vel'], "traj_gamma": adjustable_params['traj_gamma']}
-
+        print("NOMINAL_GATES", self.NOMINAL_GATES)
+        print("NOMINAL_OBSTACLES", self.NOMINAL_OBSTACLES)
         trajGen = TrajGenerator(traj_plan_params, self.NOMINAL_GATES, self.NOMINAL_OBSTACLES)
-
+        
         for _ in range(adjustable_params['replan_attempt_num']):
             flag = trajGen.trajectory_replan()
             if flag:
