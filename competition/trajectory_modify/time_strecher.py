@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import math
 
 class Stretcher:
@@ -29,9 +30,27 @@ class Stretcher:
                     key_velstamp.append(np.linalg.norm(pos_traj[i+1]-pos_traj[i])/self.dt)
                     if temp_gate_index >= len(nominal_gates):
                         break
-        self.key_timestamp = np.array(key_timestamp)
+        self.key_timestamp = np.array(key_timestamp) 
         self.key_velstamp = np.array(key_velstamp)
         if self.add_target_pos: self.key_velstamp[-1] = 0.0
+
+
+        # check keystamp
+        print("self.key_timestamp:",len(self.key_timestamp))
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+        ax1.plot(self.key_timestamp, label='key_timestamp', color='blue')
+        ax1.set_title('key_timestamp')
+        ax1.legend()
+
+        # Plot data on the second subplot
+        ax2.plot(self.key_velstamp , label='key_velstamp', color='green')
+        ax2.set_title('key_velstamp')
+        ax2.legend()
+
+        # Add a common x-axis label
+        plt.xlabel('x-axis')
+        plt.savefig("keytimestamp_stretcher")
+        plt.show()
     
     def _coefficient(self, t):
         _c = 0.0

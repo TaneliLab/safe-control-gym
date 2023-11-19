@@ -39,37 +39,37 @@ class TrajGenerator:
         self._trajectory_plan() # self.pos_trajectory
 
         # Plot waypoints
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        obstacle_x, obstacle_y,_,_,_,_ = zip(*self.obstacles)
-        for i in range(len(obstacle_x)):
-            x_cylinder, y_cylinder, z_cylinder = self.generate_cylinder_points(obstacle_x[i],obstacle_y[i])
-            # X_cylinder, Y_cylinder = np.meshgrid(x_cylinder, y_cylinder)
-            # ax.plot_surface(X_cylinder, Y_cylinder, np.tile(z_cylinder, (len(x_cylinder), 1)), color='black', alpha=0.6)
-            ax.plot_trisurf(x_cylinder, y_cylinder, z_cylinder, color='black', alpha=0.6)
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # obstacle_x, obstacle_y,_,_,_,_ = zip(*self.obstacles)
+        # for i in range(len(obstacle_x)):
+        #     x_cylinder, y_cylinder, z_cylinder = self.generate_cylinder_points(obstacle_x[i],obstacle_y[i])
+        #     # X_cylinder, Y_cylinder = np.meshgrid(x_cylinder, y_cylinder)
+        #     # ax.plot_surface(X_cylinder, Y_cylinder, np.tile(z_cylinder, (len(x_cylinder), 1)), color='black', alpha=0.6)
+        #     ax.plot_trisurf(x_cylinder, y_cylinder, z_cylinder, color='black', alpha=0.6)
         
 
-        # x_coords_gate, y_coords_gate, z_coords_gate = zip(*self.gate_sequence)
-        gates_x, gates_y,gates_z,_,_,_ = zip(*self.gates)
-        x_coords_init, y_coords_init, z_coords_init = zip(*self.init_path)
-        x_coords_path, y_coords_path, z_coords_path = zip(*self.path)
-        x_coords_pos, y_coords_pos, z_coords_pos = zip(*self.pos_trajectory)
+        # # x_coords_gate, y_coords_gate, z_coords_gate = zip(*self.gate_sequence)
+        # gates_x, gates_y,gates_z,_,_,_ = zip(*self.gates)
+        # x_coords_init, y_coords_init, z_coords_init = zip(*self.init_path)
+        # x_coords_path, y_coords_path, z_coords_path = zip(*self.path)
+        # x_coords_pos, y_coords_pos, z_coords_pos = zip(*self.pos_trajectory)
        
-        ax.scatter(gates_x, gates_y, gates_z, c='red', marker='o',alpha=1,s=30,label="gates")
-        # ax.scatter(x_coords_gate, y_coords_gate, z_coords_gate, c='red', marker='o')
-        ax.scatter(x_coords_init, y_coords_init, z_coords_init, c='purple', marker='o',alpha=0.8,label="init_path")
-        ax.scatter(x_coords_path, y_coords_path, z_coords_path, c='green', marker='s',alpha=0.3, label="path_correct")
-        ax.scatter(x_coords_pos, y_coords_pos, z_coords_pos, c='blue', marker='+',alpha=0.3,label="route")
+        # ax.scatter(gates_x, gates_y, gates_z, c='red', marker='o',alpha=1,s=30,label="gates")
+        # # ax.scatter(x_coords_gate, y_coords_gate, z_coords_gate, c='red', marker='o')
+        # ax.scatter(x_coords_init, y_coords_init, z_coords_init, c='purple', marker='o',alpha=0.8,label="init_path")
+        # ax.scatter(x_coords_path, y_coords_path, z_coords_path, c='green', marker='s',alpha=0.3, label="path_correct")
+        # ax.scatter(x_coords_pos, y_coords_pos, z_coords_pos, c='blue', marker='+',alpha=0.3,label="route")
 
-        # Set labels for the axes
-        ax.set_xlabel('X Label')
-        ax.set_ylabel('Y Label')
-        ax.set_zlabel('Z Label')
-        ax.legend()
+        # # Set labels for the axes
+        # ax.set_xlabel('X Label')
+        # ax.set_ylabel('Y Label')
+        # ax.set_zlabel('Z Label')
+        # ax.legend()
 
-        # Show the plot
-        plt.savefig("Way_points.png")
-        plt.show()
+        # # Show the plot
+        # plt.savefig("Way_points.png")
+        # plt.show()
 
 
     def generate_cylinder_points(self, obstacle_x, obstacle_y, height=1, num_points=100):
@@ -162,7 +162,6 @@ class TrajGenerator:
             return np.array([-math.cos(p)*math.sin(y),
                             math.cos(r)*math.cos(y)-math.sin(r)*math.sin(p)*math.sin(y),
                             math.cos(y)*math.sin(r)+math.cos(r)*math.sin(p)*math.sin(y)])
-
         for i in range(len(seq)-2):
             temp_gate = gates[seq[i]]
             next_gate = gates[seq[i+1]]

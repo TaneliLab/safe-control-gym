@@ -25,7 +25,7 @@ Tips:
 
 """
 import numpy as np
-
+import matplotlib.pyplot as plt
 from collections import deque
 
 try:
@@ -250,6 +250,7 @@ class Controller():
         temp_att = np.array(obs[6:9])
 
         if 'current_target_gate_id' in info and 'current_target_gate_pos' in info:
+            # refresh the true gate position
             next_gate_id = info['current_target_gate_id']
             next_gate_pos = np.array(info['current_target_gate_pos'][0:2])
             self.modifier.refresh_gate_info(next_gate_id, next_gate_pos, self.temp_target[0:2])
@@ -279,7 +280,7 @@ class Controller():
                 target_yaw = self.yaw_trajectory[step].copy()
                 target_rpy_rates = np.zeros(3)
 
-                target_pos += np.append(self.modifier.get_des_pos_bias(target_pos[0:2]), 0.0)
+                target_pos += np.append(self.modifier.get_des_pos_bias(target_pos[0:2]), 0.0) # change gate pos by modifier
                 target_acc += self.identifier.reference_signal_bias()
                 
                 command_type = Command(1)  # cmdFullState.
