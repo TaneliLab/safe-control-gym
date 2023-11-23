@@ -30,6 +30,7 @@ from collections import deque
 
 try:
     from competition_utils import Command, PIDController, timing_step, timing_ep, plot_trajectory, draw_trajectory
+
 except ImportError:
     # PyTest import.
     from .competition_utils import Command, PIDController, timing_step, timing_ep, plot_trajectory, draw_trajectory
@@ -42,9 +43,11 @@ except ImportError:
 # Please refrain from importing large or unstable 3rd party packages.
 try:
     import example_custom_utils as ecu
+    from planing.min_snap_generator import MinimumSnapTrajectory
 except ImportError:
     # PyTest import.
     from . import example_custom_utils as ecu
+    from .planing.min_snap_generator import MinimumSnapTrajectory
 
 #########################
 # REPLACE THIS (END) ####
@@ -109,6 +112,48 @@ class Controller():
         # REPLACE THIS (START) ##
         #########################
 
+        # Constraints analysis
+        pos_constraint = {'x':[-3,3], 'y':[-3,3], 'z':[-0.1,2]}
+
+        # Assign different parameters according to difficulty level
+
+        # Parameter identifier
+        
+        # Trajectory planning(1st task)
+        self.takeoff_flag = False
+        if 'obstacles' in initial_info['gates_and_obs_randomization']:
+            robust_radius = max(abs(initial_info['gates_and_obs_randomization']['obstacles'].high),
+                                abs(initial_info['gates_and_obs_randomization']['obstacles'].low))
+        else:
+            robust_radius = 0.
+        obstacle_geo = [initial_info['obstacle_dimensions']['height'], initial_info['obstacle_dimensions']['radius'] + robust_radius]
+        gate_geo = [initial_info['gate_dimensions']['tall']['edge'], 0.05, 0.05]
+        gate_height = [initial_info['gate_dimensions']['tall']['height'], initial_info['gate_dimensions']['low']['height']]
+        
+        start_pos = [initial_obs[0], initial_obs[2], initial_obs[4]]
+        if use_firmware:
+            start_height = np.average(gate_height)
+            start_pos[2] = start_height
+        self.start_pos = start_pos
+        goal_pos = [initial_info["x_reference"][0], initial_info["x_reference"][2], initial_info["x_reference"][4]]
+        self.stop_pos = goal_pos
+        # complete traj_plan(used later)
+        # traj_plan_params = {"ctrl_time": initial_info["episode_len_sec"], "ctrl_freq": self.CTRL_FREQ, "gate_sequence_fixed": True,
+        #             "start_pos": start_pos, "stop_pos": goal_pos, "max_recursion_num": adjustable_params['max_recursion_num'],
+        #             "uav_radius": 0.075, "obstacle_geo": obstacle_geo, "gate_geo": gate_geo, "accuracy": 0.01,
+        #             "gate_collide_angle": adjustable_params['gate_collide_angle'], "gate_height": gate_height,
+        #             "path_insert_point_dist_min": adjustable_params['path_insert_point_dist_min'],
+        #             "gate_waypoint_safe_dist": adjustable_params['gate_waypoint_safe_dist'],
+        #             "traj_max_vel": adjustable_params['traj_max_vel'], "traj_gamma": adjustable_params['traj_gamma']}
+
+
+        traj_plan_params = {"ctrl_time": initial_info["episode_len_sec"], "ctrl_freq": self.CTRL_FREQ, "gate_sequence_fixed": True,
+            "start_pos": start_pos, "stop_pos": goal_pos,
+            "uav_radius": 0.075, "obstacle_geo": obstacle_geo, "gate_geo": gate_geo, "accuracy": 0.01,
+            "gate_height": gate_height}
+
+
+
         # Call a function in module `example_custom_utils`.
         ecu.exampleFunction()
 
@@ -135,19 +180,31 @@ class Controller():
                     waypoints.append((g[0], g[1]+0.3, height))
             # waypoints.append((g[0], g[1], height))
         waypoints.append([initial_info["x_reference"][0], initial_info["x_reference"][2], initial_info["x_reference"][4]])
-
-        # Polynomial fit.
+        print("edit_waypointsL:", waypoints)
+        # make time same as min_snap_plan
         self.waypoints = np.array(waypoints)
-        deg = 6
         t = np.arange(self.waypoints.shape[0])
-        fx = np.poly1d(np.polyfit(t, self.waypoints[:,0], deg))
-        fy = np.poly1d(np.polyfit(t, self.waypoints[:,1], deg))
-        fz = np.poly1d(np.polyfit(t, self.waypoints[:,2], deg))
+        print("edit_timelength: ", t)
         duration = 15
         t_scaled = np.linspace(t[0], t[-1], int(duration*self.CTRL_FREQ))
-        self.ref_x = fx(t_scaled)
-        self.ref_y = fy(t_scaled)
-        self.ref_z = fz(t_scaled)
+        
+        mini_snap_traj_generator = MinimumSnapTrajectory(traj_plan_params, self.NOMINAL_GATES, self.NOMINAL_OBSTACLES)
+        optimal_coefficients = mini_snap_traj_generator.min_snap_plan(self.waypoints)
+        self.ref_x  = np.polyval(optimal_coefficients[0], t_scaled)
+        self.ref_y  = np.polyval(optimal_coefficients[1], t_scaled)
+        self.ref_z  = np.polyval(optimal_coefficients[2], t_scaled)
+        # # Polynomial fit.
+        # self.waypoints = np.array(waypoints)
+        # deg = 6
+        # t = np.arange(self.waypoints.shape[0])
+        # fx = np.poly1d(np.polyfit(t, self.waypoints[:,0], deg))
+        # fy = np.poly1d(np.polyfit(t, self.waypoints[:,1], deg))
+        # fz = np.poly1d(np.polyfit(t, self.waypoints[:,2], deg))
+        # duration = 15
+        # t_scaled = np.linspace(t[0], t[-1], int(duration*self.CTRL_FREQ))
+        # self.ref_x = fx(t_scaled)
+        # self.ref_y = fy(t_scaled)
+        # self.ref_z = fz(t_scaled)
 
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
