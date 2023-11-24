@@ -139,14 +139,32 @@ class Controller():
         self.waypoints = np.array(waypoints)
         deg = 6
         t = np.arange(self.waypoints.shape[0])
+
         fx = np.poly1d(np.polyfit(t, self.waypoints[:,0], deg))
         fy = np.poly1d(np.polyfit(t, self.waypoints[:,1], deg))
         fz = np.poly1d(np.polyfit(t, self.waypoints[:,2], deg))
-        duration = 15
+
+        f_dx = np.polyder(fx)
+        f_dy = np.polyder(fy)
+        f_dz = np.polyder(fz)
+
+        f_ddx = np.polyder(f_dx)
+        f_ddy = np.polyder(f_dy)
+        f_ddz = np.polyder(f_dz)
+
+        duration = 5
         t_scaled = np.linspace(t[0], t[-1], int(duration*self.CTRL_FREQ))
         self.ref_x = fx(t_scaled)
         self.ref_y = fy(t_scaled)
         self.ref_z = fz(t_scaled)
+
+        self.ref_dx = f_dx(t_scaled)
+        self.ref_dy = f_dy(t_scaled)
+        self.ref_dz = f_dz(t_scaled)
+
+        self.ref_ddx = f_ddx(t_scaled)
+        self.ref_ddy = f_ddy(t_scaled)
+        self.ref_ddz = f_ddz(t_scaled)
 
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
@@ -194,8 +212,10 @@ class Controller():
         # REPLACE THIS (START) ##
         #########################
 
+
         # Handwritten solution for GitHub's getting_stated scenario.
 
+        endpoint_freq = 6
         if iteration == 0:
             height = 1
             duration = 2
@@ -203,49 +223,49 @@ class Controller():
             command_type = Command(2)  # Take-off.
             args = [height, duration]
 
-        elif iteration >= 3*self.CTRL_FREQ and iteration < 20*self.CTRL_FREQ:
+        elif iteration >= 3*self.CTRL_FREQ and iteration < endpoint_freq*self.CTRL_FREQ:
             step = min(iteration-3*self.CTRL_FREQ, len(self.ref_x) -1)
             target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
-            target_vel = np.zeros(3)
-            target_acc = np.zeros(3)
+            target_vel = np.array([self.ref_dx[step], self.ref_dy[step], self.ref_dz[step]])
+            target_acc = np.array([self.ref_ddx[step], self.ref_ddy[step], self.ref_ddz[step]])
             target_yaw = 0.
             target_rpy_rates = np.zeros(3)
 
             command_type = Command(1)  # cmdFullState.
             args = [target_pos, target_vel, target_acc, target_yaw, target_rpy_rates]
 
-        elif iteration == 20*self.CTRL_FREQ:
+        elif iteration == endpoint_freq*self.CTRL_FREQ:
             command_type = Command(6)  # Notify setpoint stop.
             args = []
 
-        elif iteration == 20*self.CTRL_FREQ+1:
+        elif iteration == endpoint_freq*self.CTRL_FREQ+1:
             x = self.ref_x[-1]
             y = self.ref_y[-1]
             z = 1.5 
             yaw = 0.
-            duration = 2.5
+            duration = 2
 
             command_type = Command(5)  # goTo.
             args = [[x, y, z], yaw, duration, False]
 
-        elif iteration == 23*self.CTRL_FREQ:
+        elif iteration == (endpoint_freq+3)*self.CTRL_FREQ:
             x = self.initial_obs[0]
             y = self.initial_obs[2]
             z = 1.5
             yaw = 0.
-            duration = 6
+            duration = 3
 
             command_type = Command(5)  # goTo.
             args = [[x, y, z], yaw, duration, False]
 
-        elif iteration == 30*self.CTRL_FREQ:
+        elif iteration == (endpoint_freq+7)*self.CTRL_FREQ:
             height = 0.
             duration = 3
 
             command_type = Command(3)  # Land.
             args = [height, duration]
 
-        elif iteration == 33*self.CTRL_FREQ-1:
+        elif iteration == (endpoint_freq + 12)*self.CTRL_FREQ-1:
             command_type = Command(-1)  # Terminate command to be sent once the trajectory is completed.
             args = []
 
