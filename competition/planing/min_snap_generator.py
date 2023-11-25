@@ -50,10 +50,20 @@ class MinimumSnapTrajectory:
         # Constraint: Position at waypoints
         return [np.polyval(coefficients, t) - waypoint for t, waypoint in zip(times, waypoints)]
 
+    def constraint_position_max(self,coefficients, times, waypoints, bound, axis):
+        constant_limit = bound # Adjust this to your desired constant limit
+        return [constant_limit - np.abs(np.polyval(coefficients, t)) for t in np.linspace(times[0], times[-1], len(waypoints))]
+
     def constraint_velocity(self, coefficients, times):
         # Constraint: Velocity at specific times (e.g., start and end)
         velocity_coefficients = np.polyder(coefficients, 1)
         return [np.polyval(velocity_coefficients, t) for t in [times[0], times[-1]]]
+
+    def constraint_velocity_max(self,coefficients, times, waypoints, bound):
+        velocity_coefficients = np.polyder(coefficients, 1)
+        constant_limit = bound # Adjust this to your desired constant limit
+        return [constant_limit - np.abs(np.polyval(velocity_coefficients, t)) for t in np.linspace(times[0], times[-1], len(waypoints))]
+
 
     def constraint_acceleration(self, coefficients, times):
         # Constraint: Acceleration at specific times (e.g., start and end)
@@ -151,7 +161,7 @@ class MinimumSnapTrajectory:
         print("times:", times)
         optimal_coefficients = []
         for waypoints_ in waypoints:
-            self.num_coefficients = (len(waypoints_) )*3
+            self.num_coefficients = (len(waypoints_) )*3-2
             print("num_coeff:", self.num_coefficients)
             initial_guess = np.random.rand(self.num_coefficients)
             # Bounds for the optimization variables
@@ -162,9 +172,11 @@ class MinimumSnapTrajectory:
                 {'type': 'eq', 'fun': self.constraint_velocity, 'args': [times]},
                 {'type': 'eq', 'fun': self.constraint_acceleration, 'args': [times]},
                 {'type': 'eq', 'fun': self.constraint_jerk, 'args': [times]},
-                {'type': 'ineq', 'fun': self.constraint_acceleration_max,'args': (times, waypoints_, 3)} # max_acc?
+                # {'type': 'ineq', 'fun': self.constraint_acceleration_max,'args': (times, waypoints_, 3)}, # max_acc?
+                {'type': 'ineq', 'fun': self.constraint_velocity_max,'args': (times, waypoints_, 10)} # max_velocity
             ]
             result = minimize(self.objective_function, initial_guess, method='SLSQP', bounds=bounds, constraints=constraints)
+            # COBYLA   SLSQP
             optimal_coefficients.append(result.x)
         return optimal_coefficients
 
