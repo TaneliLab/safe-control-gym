@@ -1,5 +1,5 @@
 import pybullet as p
-from competition.trajectory_planning.generator_utils import *
+from .generator_utils import *
 
 class TrajGenerator:
 

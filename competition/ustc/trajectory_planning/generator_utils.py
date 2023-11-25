@@ -1,7 +1,7 @@
 import os
 import math
 import numpy as np
-from competition.trajectory_planning.TrajGen.trajGen import *
+from TrajGen.trajGen import *
 
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
