@@ -13,7 +13,7 @@ class EkControllerImplSimple:
                  ):
         self._arc_parametrization_tolerance = 1e-4
         self._evenly_spaced_segments = 90
-        self._take_off_height = 0.4
+        self._take_off_height = 0.8  # 0.4
         self._gate_waypoint_offset = 0.2
 
         self._config = config
@@ -131,12 +131,16 @@ class EkControllerImplSimple:
                 velocity=np.zeros(3)),
             gate_poses=list(map(to_pose, gates)),
             acceleration_limits=Limits(
-                lower=-1 * np.ones(3),
-                upper=1 * np.ones(3),
+                # lower=-1 * np.ones(3),
+                # upper=1 * np.ones(3),
+                lower=-0.2 * np.ones(3),
+                upper=0.2 * np.ones(3),
             ),
             velocity_limits=Limits(
-                lower=np.array([0.05, -np.pi/6, -np.pi/6]),
-                upper=np.array([2.00, np.pi/6, np.pi/6]),
+                # lower=np.array([0.05, -np.pi/6, -np.pi/6]),
+                # upper=np.array([2.00, np.pi/6, np.pi/6]),
+                lower=np.array([0.02, -np.pi/12, -np.pi/12]),
+                upper=np.array([1.00, np.pi/12, np.pi/12]),
             ),
             num_cone_samples=3,
             obstacles=obstacles,

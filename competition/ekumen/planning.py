@@ -27,10 +27,14 @@ import numpy as np
 import networkx as nx
 from scipy.spatial.transform import Rotation
 
-from .trajectory import ConstantAccelerationTrajectory
-from .trajectory import PiecewiseTrajectory
-from .trajectory import Trajectory
-
+try:
+    from .trajectory import ConstantAccelerationTrajectory
+    from .trajectory import PiecewiseTrajectory
+    from .trajectory import Trajectory
+except ImportError:
+    from trajectory import ConstantAccelerationTrajectory
+    from trajectory import PiecewiseTrajectory
+    from trajectory import Trajectory
 
 def spherical2cartesian(vector):
     vector = np.asarray(vector)
@@ -320,9 +324,9 @@ def plan_pmm_time_optimal_trajectory(
     return relevant_states, trajectory
 
 
-def linspace_product(start, end, n):
-    return np.array(np.meshgrid(
-        *np.linspace(start, end, n).T
+def linspace_product(start, end, n):        # lower upper samples
+    return np.array(np.meshgrid(             # meshgrid
+        *np.linspace(start, end, n).T        # to vector 
     )).T.reshape(-1, 3)
 
 
@@ -349,19 +353,26 @@ def plan_time_optimal_trajectory_through_gates(
         gate_cones = [[
             State(position, rotation.apply(velocity))
             for velocity in spherical2cartesian(
-                linspace_product(*velocity_limits[i],
-                                 num_cone_samples))
+                linspace_product(*velocity_limits[i],    # linspace_product(start, end, n)
+                                 num_cone_samples))      # generate a linear space grid discretization
         ] for i, (position, rotation) in enumerate(gate_poses)]
-
+        print("iter:", k)
+        # print("gate_cones:", gate_cones)
         states, trajectory = plan_pmm_time_optimal_trajectory(
             initial_state, final_state, acceleration_limits,
             gate_cones, obstacles, safe_obstacle_distance)
         if abs(best_time - trajectory.duration) < convergence_epsilon:
             break
         best_time = trajectory.duration
+        print("best_time:", best_time)
 
         gate_velocities = (state.velocity for state in states[1:-1])
+        print("gate_poses:", gate_poses)
+        print("------------------")
+        print("gate_velocities:", gate_velocities)
         gate_states = zip(gate_poses, gate_velocities)
+        
+
         for i, ((_, rotation), velocity) in enumerate(gate_states):
             # Scale limits velocity search around the optimal velocity
             rotated_velocity = cartesian2spherical(

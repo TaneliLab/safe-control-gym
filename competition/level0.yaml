@@ -5,7 +5,7 @@
 # | `level0.yaml`       | **Yes**      | *No*                      | *No*                        | *No*                   | Perfect knowledge |
 
 # Configuration
-num_episodes: 5 # Customizable number of episodes (NOTE: solutions that require fewer episode will receive higher scores)
+num_episodes: 1 # Customizable number of episodes (NOTE: solutions that require fewer episode will receive higher scores)
 use_firmware: True # Whether to use pycffirmware or not (NOTE: only set to False for debugging purposes)
 verbose: True # Boolean passed to the Controller class, can be used to turn on and off additional printouts
 
@@ -59,10 +59,10 @@ quadrotor_config:
     ]
   obstacles:
     [  # x, y, z, r, p, y
-      # [1.5, -2.5, 0, 0, 0, 0],
-      # [0.5, -1, 0, 0, 0, 0],
-      # [1.5, 0, 0, 0, 0, 0],
-      # [-1, 0, 0, 0, 0, 0]
+      [1.5, -2.5, 0, 0, 0, 0],
+      [0.5, -1, 0, 0, 0, 0],
+      [1.5, 0, 0, 0, 0, 0],
+      [-1, 0, 0, 0, 0, 0]
     ]
 
   # Randomization of the initial state

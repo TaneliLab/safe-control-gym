@@ -77,7 +77,7 @@ def run(test=False):
         firmware_wrapper = make('firmware',
                     env_func, FIRMWARE_FREQ, CTRL_FREQ
                     ) 
-        obs, info = firmware_wrapper.reset()
+        obs, info = firmware_wrapper.reset()  # where to check
         info['ctrl_timestep'] = CTRL_DT
         info['ctrl_freq'] = CTRL_FREQ
         env = firmware_wrapper.env

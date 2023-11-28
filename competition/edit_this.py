@@ -25,8 +25,8 @@ Tips:
 
 """
 import numpy as np
-import sys
-print(sys.path)
+# import sys
+# print(sys.path)
 
 from collections import deque
 
@@ -46,17 +46,17 @@ except ImportError:
 try:
     import example_custom_utils as ecu
     # from planing.min_snap_generator import MinimumSnapTrajectory
-    from ustc.parameters.get_params import ParamAssign
-    from ustc.trajectory_planning.traj_generator import TrajGenerator
-    from ustc.trajectory_modify.modifier import Modifier
-    from ustc.trajectory_modify.time_strecher import Stretcher
+    # from ustc.parameters.get_params import ParamAssign
+    # from ustc.trajectory_planning.traj_generator import TrajGenerator
+    # from ustc.trajectory_modify.modifier import Modifier
+    # from ustc.trajectory_modify.time_strecher import Stretcher
     from ekumen.ek_controller_config import EkControllerConfig
     from ekumen.ek_controller_impl_simple import EkControllerImplSimple
 except ImportError:
     # PyTest import.
     # from . import example_custom_utils as ecu
     # from .planing.min_snap_generator import MinimumSnapTrajectory
-    # from .ustc.parameters.get_params import ParamAssign
+    # from .get_params import ParamAssign
     # from .ustc.trajectory_planning.traj_generator import TrajGenerator
     # from .ustc.trajectory_modify.modifier import Modifier
     # from .ustc.trajectory_modify.time_strecher import Stretcher
@@ -126,6 +126,7 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
+        # ---------------------------------ekumen planning start--------------------------------
         self._latest_timestamp_seen = 0.0
 
         ek_config = EkControllerConfig(
@@ -149,8 +150,10 @@ class Controller():
 
         self.ref_x, self.ref_y, self.ref_z = self._ek_controller_impl.get_reference_trajectory()
         draw_trajectory(initial_info, waypoints_pos, self.ref_x, self.ref_y, self.ref_z)
+        # ---------------------------------ekumen planning end--------------------------------
+
         # ---------------------------------ustc planning start ---------------------------------------- 
-        # # Constraints analysis
+        # # # Constraints analysis
         # pos_constraint = {'x':[-3,3], 'y':[-3,3], 'z':[-0.1,2]}
 
         # # Assign different parameters according to difficulty level
@@ -168,7 +171,6 @@ class Controller():
         #                         abs(initial_info['gates_and_obs_randomization']['obstacles'].low))
         # else:
         #     robust_radius = 0.
-
 
         # obstacle_geo = [initial_info['obstacle_dimensions']['height'], initial_info['obstacle_dimensions']['radius'] + robust_radius]
         # gate_geo = [initial_info['gate_dimensions']['tall']['edge'], 0.05, 0.05]
@@ -196,8 +198,8 @@ class Controller():
         # #     "uav_radius": 0.075, "obstacle_geo": obstacle_geo, "gate_geo": gate_geo, "accuracy": 0.01,
         # #     "gate_height": gate_height}
 
-        # # Call a function in module `example_custom_utils`.
-        # ecu.exampleFunction()
+        # # # Call a function in module `example_custom_utils`.
+        # # ecu.exampleFunction()
         # trajGen = TrajGenerator(traj_plan_params, self.NOMINAL_GATES, self.NOMINAL_OBSTACLES)
 
         # for _ in range(adjustable_params['replan_attempt_num']):
