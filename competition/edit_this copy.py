@@ -46,8 +46,6 @@ except ImportError:
     # PyTest import.
     from . import example_custom_utils as ecu
 
-from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
-
 #########################
 # REPLACE THIS (END) ####
 #########################
@@ -123,93 +121,35 @@ class Controller():
             height = initial_info["gate_dimensions"]["tall"]["height"] if g[6] == 0 else initial_info["gate_dimensions"]["low"]["height"]
             if g[5] > 0.75 or g[5] < 0:
                 if idx == 2:  # Hardcoded scenario knowledge (direction in which to take gate 2).
-                    # waypoints.append((g[0]+0.3, g[1]-0.3, height))
-                    # waypoints.append((g[0]-0.3, g[1]-0.3, height))
-                    # waypoints.append((g[0], g[1], height))
-                    waypoints.append((g[0], g[1], height))
+                    waypoints.append((g[0]+0.3, g[1]-0.3, height))
+                    waypoints.append((g[0]-0.3, g[1]-0.3, height))
                 else:
-                    # waypoints.append((g[0]-0.3, g[1], height))
-                    # waypoints.append((g[0]+0.3, g[1], height))
-                    # waypoints.append((g[0], g[1], height))
-                    waypoints.append((g[0], g[1], height))
+                    waypoints.append((g[0]-0.3, g[1], height))
+                    waypoints.append((g[0]+0.3, g[1], height))
             else:
                 if idx == 3:  # Hardcoded scenario knowledge (correct how to take gate 3).
-                    # waypoints.append((g[0]+0.1, g[1]-0.3, height))
-                    # waypoints.append((g[0]+0.1, g[1]+0.3, height))
-                    # waypoints.append((g[0], g[1], height))
-                    waypoints.append((g[0], g[1], height))
+                    waypoints.append((g[0]+0.1, g[1]-0.3, height))
+                    waypoints.append((g[0]+0.1, g[1]+0.3, height))
                 else:
-                    # waypoints.append((g[0], g[1]-0.3, height))
-                    # waypoints.append((g[0], g[1]+0.3, height))
-                    # waypoints.append((g[0], g[1], height))
-                    waypoints.append((g[0], g[1], height))
+                    waypoints.append((g[0], g[1]-0.3, height))
+                    waypoints.append((g[0], g[1]+0.3, height))
         waypoints.append([initial_info["x_reference"][0], initial_info["x_reference"][2], initial_info["x_reference"][4]])
-        
-        waypoints2 = waypoints[1:-1]
 
-        waypoints2 = np.array(waypoints2)
-
-        # print(waypoints)
         # Polynomial fit.
         self.waypoints = np.array(waypoints)
         deg = 6
-
-        print(waypoints2)
-
-        trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
-
-        trajPlanner.optimizer()
-
-        trajectory = trajPlanner.spline
-
-        duration = trajPlanner.t
-
-
-        timesteps = np.linspace(0, duration, int(duration*self.CTRL_FREQ))
-        t_scaled = timesteps
-
-        self.p = trajectory(timesteps)
-
-        self.v = trajectory.derivative(1)(timesteps)
-        self.a = trajectory.derivative(2)(timesteps)
-
-
-        # t = np.arange(self.waypoints.shape[0])
-
-        # fx = np.poly1d(np.polyfit(t, self.waypoints[:,0], deg))
-        # fy = np.poly1d(np.polyfit(t, self.waypoints[:,1], deg))
-        # fz = np.poly1d(np.polyfit(t, self.waypoints[:,2], deg))
-
-        # f_dx = np.polyder(fx)
-        # f_dy = np.polyder(fy)
-        # f_dz = np.polyder(fz)
-
-        # f_ddx = np.polyder(f_dx)
-        # f_ddy = np.polyder(f_dy)
-        # f_ddz = np.polyder(f_dz)
-
-        # duration = 5
-        # t_scaled = np.linspace(t[0], t[-1], int(duration*self.CTRL_FREQ))
-        # self.ref_x = fx(t_scaled)
-        # self.ref_y = fy(t_scaled)
-        # self.ref_z = fz(t_scaled)
-
-        # self.ref_dx = f_dx(t_scaled)
-        # self.ref_dy = f_dy(t_scaled)
-        # self.ref_dz = f_dz(t_scaled)
-
-        # self.ref_ddx = f_ddx(t_scaled)
-        # self.ref_ddy = f_ddy(t_scaled)
-        # self.ref_ddz = f_ddz(t_scaled)
-
-
-        self.ref_x = self.p.T[0]
-        self.ref_y = self.p.T[1]
-        self.ref_z = self.p.T[2]
+        t = np.arange(self.waypoints.shape[0])
+        fx = np.poly1d(np.polyfit(t, self.waypoints[:,0], deg))
+        fy = np.poly1d(np.polyfit(t, self.waypoints[:,1], deg))
+        fz = np.poly1d(np.polyfit(t, self.waypoints[:,2], deg))
+        duration = 15
+        t_scaled = np.linspace(t[0], t[-1], int(duration*self.CTRL_FREQ))
+        self.ref_x = fx(t_scaled)
+        self.ref_y = fy(t_scaled)
+        self.ref_z = fz(t_scaled)
 
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
-            # plot_trajectory(t_scaled, self.waypoints, self.ref_x, self.ref_y, self.ref_z)
             plot_trajectory(t_scaled, self.waypoints, self.ref_x, self.ref_y, self.ref_z)
 
             # Draw the trajectory on PyBullet's GUI.
@@ -254,10 +194,8 @@ class Controller():
         # REPLACE THIS (START) ##
         #########################
 
-
         # Handwritten solution for GitHub's getting_stated scenario.
 
-        endpoint_freq = 20
         if iteration == 0:
             height = 1
             duration = 2
@@ -265,53 +203,49 @@ class Controller():
             command_type = Command(2)  # Take-off.
             args = [height, duration]
 
-        elif iteration >= 3*self.CTRL_FREQ and iteration < endpoint_freq*self.CTRL_FREQ:
+        elif iteration >= 3*self.CTRL_FREQ and iteration < 20*self.CTRL_FREQ:
             step = min(iteration-3*self.CTRL_FREQ, len(self.ref_x) -1)
-            target_pos = self.p[step]
-            target_vel = self.v[step]
-            target_acc = self.a[step]
-
-            # target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
-            # target_vel = np.array([self.ref_dx[step], self.ref_dy[step], self.ref_dz[step]])
-            # target_acc = np.array([self.ref_ddx[step], self.ref_ddy[step], self.ref_ddz[step]])
+            target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
+            target_vel = np.zeros(3)
+            target_acc = np.zeros(3)
             target_yaw = 0.
             target_rpy_rates = np.zeros(3)
 
             command_type = Command(1)  # cmdFullState.
             args = [target_pos, target_vel, target_acc, target_yaw, target_rpy_rates]
 
-        elif iteration == endpoint_freq*self.CTRL_FREQ:
+        elif iteration == 20*self.CTRL_FREQ:
             command_type = Command(6)  # Notify setpoint stop.
             args = []
 
-        elif iteration == endpoint_freq*self.CTRL_FREQ+1:
+        elif iteration == 20*self.CTRL_FREQ+1:
             x = self.ref_x[-1]
             y = self.ref_y[-1]
             z = 1.5 
             yaw = 0.
-            duration = 2
+            duration = 2.5
 
             command_type = Command(5)  # goTo.
             args = [[x, y, z], yaw, duration, False]
 
-        elif iteration == (endpoint_freq+3)*self.CTRL_FREQ:
+        elif iteration == 23*self.CTRL_FREQ:
             x = self.initial_obs[0]
             y = self.initial_obs[2]
             z = 1.5
             yaw = 0.
-            duration = 3
+            duration = 6
 
             command_type = Command(5)  # goTo.
             args = [[x, y, z], yaw, duration, False]
 
-        elif iteration == (endpoint_freq+7)*self.CTRL_FREQ:
+        elif iteration == 30*self.CTRL_FREQ:
             height = 0.
             duration = 3
 
             command_type = Command(3)  # Land.
             args = [height, duration]
 
-        elif iteration == (endpoint_freq + 12)*self.CTRL_FREQ-1:
+        elif iteration == 33*self.CTRL_FREQ-1:
             command_type = Command(-1)  # Terminate command to be sent once the trajectory is completed.
             args = []
 
