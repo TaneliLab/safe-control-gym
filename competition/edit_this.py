@@ -257,16 +257,17 @@ class Controller():
 
         # Handwritten solution for GitHub's getting_stated scenario.
 
-        endpoint_freq = 20
+        endpoint_freq = 9
         if iteration == 0:
             height = 1
-            duration = 2
+            # duration = 2
+            duration = 0.5
 
             command_type = Command(2)  # Take-off.
             args = [height, duration]
 
-        elif iteration >= 3*self.CTRL_FREQ and iteration < endpoint_freq*self.CTRL_FREQ:
-            step = min(iteration-3*self.CTRL_FREQ, len(self.ref_x) -1)
+        elif iteration >= 2*self.CTRL_FREQ and iteration < endpoint_freq*self.CTRL_FREQ:
+            step = min(iteration-2*self.CTRL_FREQ, len(self.ref_x) -1)
             target_pos = self.p[step]
             target_vel = self.v[step]
             target_acc = self.a[step]
@@ -287,9 +288,9 @@ class Controller():
         elif iteration == endpoint_freq*self.CTRL_FREQ+1:
             x = self.ref_x[-1]
             y = self.ref_y[-1]
-            z = 1.5 
+            z = self.ref_z[-1]
             yaw = 0.
-            duration = 2
+            duration = 0.5
 
             command_type = Command(5)  # goTo.
             args = [[x, y, z], yaw, duration, False]

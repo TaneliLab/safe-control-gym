@@ -26,7 +26,7 @@ VERBOSE = False
     The optimization is carried out through an elastic band approach, only soft constraints are enforced and summed in a multiterm cost formulation"""
 
 # Time optimization weight
-LAMBDA_T = 0.001
+LAMBDA_T = 0.005
 
 # Velocity limit weight
 LAMBDA_V = 10
@@ -422,7 +422,7 @@ class TrajectoryPlanner:
             breached = dist[mask]
 
             # Cost as the difference between the threshold values and the summed breach of constraint
-            cost +=   threshold * len(breached) - np.sum(breached) 
+            cost +=   (threshold * len(breached) - np.sum(breached) )**2
 
         if VERBOSE: 
             print("obstacle cost: ", cost)
