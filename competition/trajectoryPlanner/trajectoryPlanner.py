@@ -280,7 +280,7 @@ class TrajectoryPlanner:
         t = abs(x[-1])
 
         # Perturbation numerical derivative
-        dt = 1 
+        dt = 1
 
         jacobian = []
 
@@ -503,6 +503,10 @@ class TrajectoryPlanner:
         
         self.spline = interpol.BSpline(self.knots, self.coeffs, self.degree)
 
+        self.rotationalTrajectory()
+
+        
+
         return res
     
 
@@ -526,3 +530,113 @@ class TrajectoryPlanner:
         ax.plot(self.waypoints.T[0], self.waypoints.T[1], self.waypoints.T[2],'o', label='Waypoints')
         ax.legend()
         plt.show()
+
+
+    def sampleForce(self): 
+        
+        n = 100
+
+        t_samples = np.linspace(0, self.t, n)
+
+        self.samplingDeltaT = self.t / n
+
+        accelerationSpline = self.spline.derivative(2)
+
+        accelerations = accelerationSpline(t_samples)
+
+        forceDirections = accelerations - 9.81
+
+        norms = np.linalg.norm(forceDirections, axis=1)
+
+        forceDirections = np.divide(forceDirections.T, norms)
+
+        forceDirections = forceDirections.T
+
+
+        return forceDirections
+    
+    def sampleOrientations(self, forceDirections): 
+
+        n = np.array([1,0,0])
+
+        z_vecs = forceDirections
+
+
+        y_vecs = np.cross(z_vecs, n)
+
+        norms = np.linalg.norm(y_vecs, axis=1)
+
+        y_vecs = np.divide(y_vecs.T, norms)
+
+        y_vecs = y_vecs.T
+
+        x_vecs = np.cross(y_vecs, z_vecs)
+
+        matrices = [np.eye(3,3)]
+
+        for i in range(x_vecs.shape[0]): 
+            x = x_vecs[i].T
+            y = y_vecs[i].T
+            z = z_vecs[i].T
+            R = [x, y, z]
+
+            matrices.append(np.array(R).T)
+            
+        matrices.append(matrices[-1])
+
+        return matrices
+    
+    def differentiateMatrices(self, matrices): 
+        
+        R_dots = []
+
+        for i in range(len(matrices)-1): 
+            m0 = matrices[i]
+            m1 = matrices[i+1]
+
+            dm = m1 - m0 
+
+            dm = dm / self.samplingDeltaT 
+
+            R_dots.append(dm)
+
+        return R_dots
+    
+    def getOmegas(self, Rs, R_dots): 
+
+        omegas = [np.array([0,0,0])]
+
+
+        for i in range(len(Rs)-1): 
+            R_trans = Rs[i].T
+
+            R_dot = R_dots[i]
+
+            omega_hat = R_dot * R_trans
+
+            omega = [omega_hat[2,1], omega_hat[0, 2], omega_hat[1,0]]
+            omegas.append(omega)
+
+
+        return np.array(omegas)
+    
+    def interpolateOmegas(self, omegas): 
+
+        omega_knots = np.linspace(0, self.t, omegas.shape[0])
+
+        self.omega_spline = interpol.make_interp_spline(omega_knots, omegas)
+
+        
+
+
+    def rotationalTrajectory(self): 
+        forcesDirs = self.sampleForce()
+
+        Rs = self.sampleOrientations(forcesDirs)
+
+        R_dots = self.differentiateMatrices(Rs)
+
+        omegas = self.getOmegas(Rs, R_dots)
+
+        self.interpolateOmegas(omegas)
+        

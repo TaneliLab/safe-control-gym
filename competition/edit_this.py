@@ -158,6 +158,8 @@ class Controller():
 
         trajectory = trajPlanner.spline
 
+        omegaTrajectory = trajPlanner.omega_spline
+
         duration = trajPlanner.t
 
 
@@ -168,6 +170,10 @@ class Controller():
 
         self.v = trajectory.derivative(1)(timesteps)
         self.a = trajectory.derivative(2)(timesteps)
+
+        self.omega = omegaTrajectory(timesteps)
+
+        
 
 
         self.ref_x = self.p.T[0]
@@ -245,7 +251,8 @@ class Controller():
             # target_vel = np.array([self.ref_dx[step], self.ref_dy[step], self.ref_dz[step]])
             # target_acc = np.array([self.ref_ddx[step], self.ref_ddy[step], self.ref_ddz[step]])
             target_yaw = 0.
-            target_rpy_rates = np.zeros(3)
+            # target_rpy_rates = np.zeros(3)
+            target_rpy_rates = self.omega[step]
 
             command_type = Command(1)  # cmdFullState.
             args = [target_pos, target_vel, target_acc, target_yaw, target_rpy_rates]
