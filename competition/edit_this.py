@@ -162,9 +162,18 @@ class Controller():
 
         duration = trajPlanner.t
 
-        duration = 30
+        duration = 15
+        self.flight_duration = 15
+        self.takeOffTime = 1
+        self.takeOffHeight = 1
+        self.onflyHeight = 1
+        # takeoff_timesteps = np.array([0 for i in range(self.takeOffTime*self.CTRL_FREQ -1)])
+        # onfly_timesteps = np.linspace(0, duration-self.takeOffTime, int((duration-self.takeOffTime)*self.CTRL_FREQ))
+        # # print("takeoff_timesteps:", takeoff_timesteps)
+        # # print("onfly_timesteps:", onfly_timesteps)
+        # timesteps = np.concatenate((takeoff_timesteps, onfly_timesteps))
 
-        timesteps = np.linspace(0, duration, int(duration*self.CTRL_FREQ))
+        timesteps = np.linspace(0, self.flight_duration, int(self.flight_duration*self.CTRL_FREQ))
         t_scaled = timesteps
 
         self.p = trajectory(timesteps)
@@ -173,9 +182,11 @@ class Controller():
         self.a = trajectory.derivative(2)(timesteps)
 
         self.omega = omegaTrajectory(timesteps)
+
+
         self.ref_x = np.sin(timesteps) + self.initial_obs[0]
         self.ref_y = np.cos(timesteps) -1 + self.initial_obs[2]
-        self.ref_z = np.array([3 for ii in range(len(timesteps))])
+        self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
 
         self.onfly_time = []
         self.onfly_ref_x = []
@@ -237,20 +248,21 @@ class Controller():
 
         # Handwritten solution for GitHub's getting_stated scenario.
 
-        endpoint_freq = 30
+        endpoint_freq = self.flight_duration
 
 
         if iteration == 0:
-            height = 3
+            height = self.takeOffHeight
             # duration = 2
-            duration = 1
+            duration = self.takeOffTime
 
             command_type = Command(2)  # Take-off.
             self.takeoffFlag = True
             args = [height, duration]
 
-        elif iteration >= 1*self.CTRL_FREQ and iteration < endpoint_freq*self.CTRL_FREQ:
-            step = min(iteration-1*self.CTRL_FREQ, len(self.ref_x) -1)
+        elif iteration >= self.takeOffTime*self.CTRL_FREQ and iteration < endpoint_freq*self.CTRL_FREQ:
+            step = min(iteration-self.takeOffTime*self.CTRL_FREQ, len(self.ref_x) -1)
+            # step = min(iteration*self.CTRL_FREQ, len(self.ref_x) -1)
             self.onfly_time.append(time)
             self.onfly_ref_x.append(self.ref_x[step])
             self.onfly_ref_y.append(self.ref_y[step])
@@ -261,7 +273,7 @@ class Controller():
             self.onfly_obs_z.append(obs[4])
 
             # target_pos = self.p[step]
-            target_pos = np.array([self.ref_x[step], self.ref_y[step], 3])
+            target_pos = np.array([self.ref_x[step], self.ref_y[step], self.onflyHeight])
             target_vel = np.zeros(3)
             target_acc = np.array([0.0, 0.0, 0.0])
 
@@ -401,8 +413,8 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-
-        pass
+        print("--------interStepLearn-----------")
+        print("action:", action)
 
         #########################
         # REPLACE THIS (END) ####
