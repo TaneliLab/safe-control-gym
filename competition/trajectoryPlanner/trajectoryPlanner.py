@@ -19,6 +19,8 @@ import matplotlib.pyplot as plt
 # Maximum velocity allowed before constraining the optimization --> Avoids the necessity to use the model of the inputs and of the dynamics if it remains low
 VMAX = 10
 
+AMAX = 8
+
 # If outputs are needed
 VERBOSE = False
 
@@ -26,10 +28,12 @@ VERBOSE = False
     The optimization is carried out through an elastic band approach, only soft constraints are enforced and summed in a multiterm cost formulation"""
 
 # Time optimization weight
-LAMBDA_T = 0.005
+LAMBDA_T = 1
 
 # Velocity limit weight
 LAMBDA_V = 10
+
+LAMBDA_ACC = 10
 
 # Gate attractor weight
 LAMBDA_GATES = 100
@@ -89,7 +93,9 @@ class TrajectoryPlanner:
         Which means that not all control points of the spline are used as optimization parameters, rather we use all of them except the first and last. 
         
         Notably, we could clamp the first and last degree+1 control points, in order to fix the derivatives, however we want to maximize the flexibility of the solution so all higher derivatives can be optimized to improve the performance of the drone"""
-        self.optVars = self.coeffs[1:-1]
+        self.optLim = 3
+        
+        self.optVars = self.coeffs[self.optLim:-self.optLim]
 
         # Initial guess of the optmization vector passed to the scipy optimizer: 
             # The vector is composed by the coefficients plus the duration. 
@@ -101,6 +107,8 @@ class TrajectoryPlanner:
 
         # Velocity constraint enforced
         self.vmax = VMAX
+
+        self.amax = AMAX
 
         # Cost used during the optimization, initialized here for the gradient computations
         self.cost = self.getCost(self.x)
@@ -194,7 +202,7 @@ class TrajectoryPlanner:
         coeffs = copy.copy(self.coeffs)
 
         # Update the coefficients
-        coeffs[1:-1] = optVars
+        coeffs[self.optLim:-self.optLim] = optVars
 
 
         return knots, coeffs
@@ -233,6 +241,9 @@ class TrajectoryPlanner:
 
         # Velocity limiting
         cost += LAMBDA_V * self.velocityLimitCost(x, spline)
+
+        cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
+
 
       
 
@@ -280,7 +291,7 @@ class TrajectoryPlanner:
         t = abs(x[-1])
 
         # Perturbation numerical derivative
-        dt = 1
+        dt = 0.00001
 
         jacobian = []
 
@@ -344,7 +355,7 @@ class TrajectoryPlanner:
         # Obtain and discount goal time
         goal_time = pathlength/self.vmax
 
-        goal_time += 0.5*goal_time
+        # goal_time += 0.5*goal_time
 
         cost = 0
 
@@ -387,6 +398,37 @@ class TrajectoryPlanner:
         if VERBOSE:
 
             print("Velocity limit cost= ", cost)
+
+        return cost
+    
+
+    def accelerationLimitCost(self, x, spline): 
+        """Soft constraint on the velocity. Adds a quadratic penaly whenever the norm of the velocity exceeds the VMAX value in the control points. 
+            It is conservative as the control points define a convex hull within which the velocity is confined.
+
+        Args:
+            x (array): opt vector
+            spline (Bspline): current b-spline
+
+        Returns:
+            cost (scalar): Velocity penalty
+        """
+
+        # Get control points of velocity spline
+        vals = spline.derivative(2).c
+
+        # COmpute the squared norms
+        norms = np.square(np.linalg.norm(vals, axis=1))
+
+        # Obtain the ones which exceed the limit
+        mask = norms > self.amax**2
+
+        # Get cost
+        cost = np.sum(norms[mask] - self.amax**2)**2
+        
+        if VERBOSE:
+
+            print("Acceleration limit cost= ", cost)
 
         return cost
 
@@ -477,7 +519,7 @@ class TrajectoryPlanner:
         print("Starting to plan")
 
         # Perform the optimization by selecting the objective function, the optimization vector and the jacobian
-        res = opt.minimize(self.objective, self.x, method = 'SLSQP', jac = self.jacobian)
+        res = opt.minimize(self.objective, self.x, method = 'SLSQP', jac = self.jacobian, tol= 1e-10)
 
         
         print("Completed plan")
