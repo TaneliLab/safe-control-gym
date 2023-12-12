@@ -19,14 +19,15 @@ from rich import print
 from safe_control_gym.utils.configuration import ConfigFactory
 from safe_control_gym.utils.registration import make
 from safe_control_gym.utils.utils import sync
+
 from safe_control_gym.envs.gym_pybullet_drones.Logger import Logger
 
 try:
-    from competition_utils import Command, thrusts
+    from competition_utils import Command, thrusts, plot_real_trajectory
     from edit_this import Controller
 except ImportError:
     # Test import.
-    from .competition_utils import Command, thrusts
+    from .competition_utils import Command, thrusts, plot_real_trajectory
     from .edit_this import Controller
 
 try:
@@ -91,6 +92,10 @@ def run(test=False):
         # obs = {x, x_dot, y, y_dot, z, z_dot, phi, theta, psi, p, q, r}.
         # vicon_obs = {x, 0, y, 0, z, 0, phi, theta, psi, 0, 0, 0}.
     ctrl = Controller(vicon_obs, info, config.use_firmware, verbose=config.verbose)
+    # ref_x = ctrl.ref_x
+    # ref_y = ctrl.ref_y
+    # ref_z = ctrl.ref_z
+    
 
     # Create a logger and counters
     logger = Logger(logging_freq_hz=CTRL_FREQ)
@@ -109,6 +114,7 @@ def run(test=False):
 
     # Initial printouts.
     if config.verbose:
+        print("info keys:", info.keys())
         print('\tInitial observation [x, 0, y, 0, z, 0, phi, theta, psi, 0, 0, 0]: ' + str(obs))
         print('\tControl timestep: ' + str(info['ctrl_timestep']))
         print('\tControl frequency: ' + str(info['ctrl_freq']))
@@ -135,6 +141,9 @@ def run(test=False):
         print('\tSymbolic constraints: ')
         for fun in info['symbolic_constraints']:
             print('\t' + str(inspect.getsource(fun)).strip('\n'))
+
+    # # init a list saving the pos
+    # pos_xyz = []
 
     # Run an experiment.
     ep_start = time.time()
@@ -242,12 +251,23 @@ def run(test=False):
                    state=np.hstack([pos, np.zeros(4), rpy, vel, bf_rates, np.sqrt(action/env.KF)])
                    )
 
+        # pos_xyz.append(pos)
+
         # Synchronize the GUI.
         if config.quadrotor_config.gui:
             sync(i-episode_start_iter, ep_start, CTRL_DT)
 
         # If an episode is complete, reset the environment.
         if done:
+            # Compare real trajectory and reference trajectory
+            # pos_x = [pos[0] for pos in pos_xyz]
+            # pos_y = [pos[1] for pos in pos_xyz]
+            # pos_z = [pos[2] for pos in pos_xyz]
+
+            print("real fly trajectory length:", len(ctrl.onfly_obs_x))
+            print("length of ref trajectory:", len(ctrl.onfly_ref_x))
+            plot_real_trajectory(ctrl.onfly_time, ctrl.onfly_ref_x, ctrl.onfly_ref_y, ctrl.onfly_ref_z, ctrl.onfly_obs_x, ctrl.onfly_obs_y, ctrl.onfly_obs_z)
+
             # Plot logging (comment as desired).
             if not test:
                 logger.plot(comment="get_start-episode-"+str(episodes_count), autoclose=True)

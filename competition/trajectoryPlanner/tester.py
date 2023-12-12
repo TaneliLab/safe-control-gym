@@ -41,7 +41,6 @@ if __name__ == "__main__":
   res = trajPlan.optimizer()
   # print(trajPlan.t)
   # trajPlan.plot()
-  # plt.show()
 
   forcesDirs = trajPlan.sampleForce()
 
@@ -52,6 +51,8 @@ if __name__ == "__main__":
   omegas = trajPlan.getOmegas(matrices, R_dots)
 
   trajPlan.interpolateOmegas(omegas)
+
+  trajPlan.plot_omega()
 
 
 

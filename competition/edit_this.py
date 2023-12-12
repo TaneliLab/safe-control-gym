@@ -162,6 +162,7 @@ class Controller():
 
         duration = trajPlanner.t
 
+        duration = 30
 
         timesteps = np.linspace(0, duration, int(duration*self.CTRL_FREQ))
         t_scaled = timesteps
@@ -172,13 +173,20 @@ class Controller():
         self.a = trajectory.derivative(2)(timesteps)
 
         self.omega = omegaTrajectory(timesteps)
+        self.ref_x = np.sin(timesteps) + self.initial_obs[0]
+        self.ref_y = np.cos(timesteps) -1 + self.initial_obs[2]
+        self.ref_z = np.array([3 for ii in range(len(timesteps))])
 
-        
-
-
-        self.ref_x = self.p.T[0]
-        self.ref_y = self.p.T[1]
-        self.ref_z = self.p.T[2]
+        self.onfly_time = []
+        self.onfly_ref_x = []
+        self.onfly_ref_y = []
+        self.onfly_ref_z = []
+        self.onfly_obs_x = []
+        self.onfly_obs_y = []
+        self.onfly_obs_z = []
+        # self.ref_x = self.p.T[0]
+        # self.ref_y = self.p.T[1]
+        # self.ref_z = self.p.T[2]
 
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
@@ -229,13 +237,13 @@ class Controller():
 
         # Handwritten solution for GitHub's getting_stated scenario.
 
-        endpoint_freq = 9
+        endpoint_freq = 30
 
 
         if iteration == 0:
-            height = 1
+            height = 3
             # duration = 2
-            duration = 0.5
+            duration = 1
 
             command_type = Command(2)  # Take-off.
             self.takeoffFlag = True
@@ -243,16 +251,26 @@ class Controller():
 
         elif iteration >= 1*self.CTRL_FREQ and iteration < endpoint_freq*self.CTRL_FREQ:
             step = min(iteration-1*self.CTRL_FREQ, len(self.ref_x) -1)
-            target_pos = self.p[step]
-            target_vel = self.v[step]
-            target_acc = self.a[step]
+            self.onfly_time.append(time)
+            self.onfly_ref_x.append(self.ref_x[step])
+            self.onfly_ref_y.append(self.ref_y[step])
+            self.onfly_ref_z.append(self.ref_z[step])
+
+            self.onfly_obs_x.append(obs[0])
+            self.onfly_obs_y.append(obs[2])
+            self.onfly_obs_z.append(obs[4])
+
+            # target_pos = self.p[step]
+            target_pos = np.array([self.ref_x[step], self.ref_y[step], 3])
+            target_vel = np.zeros(3)
+            target_acc = np.array([0.0, 0.0, 0.0])
 
             # target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
             # target_vel = np.array([self.ref_dx[step], self.ref_dy[step], self.ref_dz[step]])
             # target_acc = np.array([self.ref_ddx[step], self.ref_ddy[step], self.ref_ddz[step]])
             target_yaw = 0.
-            # target_rpy_rates = np.zeros(3)
-            target_rpy_rates = self.omega[step]
+            target_rpy_rates = np.zeros(3)
+            # target_rpy_rates = self.omega[step]
 
             command_type = Command(1)  # cmdFullState.
             args = [target_pos, target_vel, target_acc, target_yaw, target_rpy_rates]

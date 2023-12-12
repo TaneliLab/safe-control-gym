@@ -640,3 +640,23 @@ class TrajectoryPlanner:
 
         self.interpolateOmegas(omegas)
         
+    def plot_omega(self): 
+        """Plot the 3d trajectory
+        """
+
+        ax = plt.figure().add_subplot(projection='3d')
+
+        test = self.t * np.linspace(0, 1, 100)
+
+
+        p = self.omega_spline(test)
+
+        # ax.text(self.start[0], self.start[1], self.start[2], 'Start' )
+        # ax.text(self.goal[0], self.goal[1], self.goal[2], 'Goal' )
+        # ax.set_zlim([0, 2])
+
+        # ax.grid(False)
+        ax.plot(p.T[0], p.T[1], p.T[2], label='Trajectory')
+        # ax.plot(self.waypoints.T[0], self.waypoints.T[1], self.waypoints.T[2],'o', label='Waypoints')
+        ax.legend()
+        plt.show()

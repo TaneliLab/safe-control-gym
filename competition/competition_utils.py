@@ -310,6 +310,46 @@ def plot_trajectory(t_scaled,
     plt.pause(2)
     plt.close()
 
+def plot_real_trajectory(t_scaled,
+                    ref_x,
+                    ref_y,
+                    ref_z,
+                    obs_x,
+                    obs_y,
+                    obs_z
+                    ):
+    """Plot the trajectory with matplotlib.
+
+    """
+    # Plot each dimension.
+    _, axs = plt.subplots(3, 1)
+    axs[0].plot(t_scaled, obs_x, label='obs_x')
+    axs[0].plot(t_scaled, ref_x, label='ref_x')
+    axs[0].set_ylabel('x (m)')
+    plt.legend()
+    axs[1].plot(t_scaled, obs_y, label='obs_y')
+    axs[1].plot(t_scaled, ref_y, label='ref_y')
+    axs[1].set_ylabel('y (m)')
+    plt.legend()
+    axs[2].plot(t_scaled, obs_z, label='obs_z')
+    axs[2].plot(t_scaled, ref_z, label='ref_z')
+    axs[2].set_ylabel('z (m)')
+    plt.legend()
+    plt.show(block=False)
+    plt.savefig("results/refvsobs_xyz.png")
+    plt.pause(2)
+    plt.close()
+
+    # Plot in 3D.
+    ax = plt.axes(projection='3d')
+    ax.plot3D(ref_x, ref_y, ref_z, label='ref')
+    ax.plot3D(obs_x, obs_y, obs_z, label='obs')
+    plt.legend()
+    plt.show(block=False)
+    plt.savefig("results/refvsobs_3D.png")
+    plt.pause(2)
+    plt.close()
+
 def draw_trajectory(initial_info,
                     waypoints,
                     ref_x,

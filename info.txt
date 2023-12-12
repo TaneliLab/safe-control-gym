@@ -1,0 +1,8 @@
+dict_keys(['symbolic_model', 'nominal_physical_parameters', 'x_reference', 'u_reference', 'symbolic_constraints', 
+'ctrl_timestep', 'ctrl_freq', 'episode_len_sec', 'quadrotor_kf', 'quadrotor_km', 'gate_dimensions', 'obstacle_dimensions', 
+'nominal_gates_pos_and_type', 'nominal_obstacles_pos', 'initial_state_randomization', 'inertial_prop_randomization', 
+'gates_and_obs_randomization', 'disturbances', 'urdf_dir', 'pyb_client', 'constraint_values'])
+
+nominal_physical_parameters:
+{'quadrotor_mass': 0.03454, 'quadrotor_ixx_inertia': 1.4e-05, 'quadrotor_iyy_inertia': 1.4e-05, 'quadrotor_izz_inertia': 2.17e-05}
+
