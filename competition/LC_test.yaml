@@ -98,8 +98,8 @@ quadrotor_config:
   inertial_prop_randomization_info:
     M:
       distrib: "uniform"
-      low:  -0.01
-      high: 0.01
+      low:  0.012
+      high: 0.012
     Ixx:
       distrib: "uniform"
       low: -0.000001

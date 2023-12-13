@@ -194,8 +194,10 @@ class Controller():
 
         self.ref_x = np.sin(timesteps) + self.initial_obs[0]
         self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
-        self.ref_z = np.array(
-            [self.onflyHeight for ii in range(len(timesteps))])
+        # constant height
+        # self.ref_z = np.array(
+        #     [self.onflyHeight for ii in range(len(timesteps))])
+        self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
 
         self.onfly_time = []
         self.onfly_ref_x = []
@@ -287,7 +289,7 @@ class Controller():
             target_pos = np.array(
                 [self.ref_x[step], self.ref_y[step], self.onflyHeight])
             target_vel = np.zeros(3)
-            target_acc = np.array([0.0, 0.0, 0.0 + self.acc_ff[2]])
+            target_acc = np.array([0.0, 0.0, self.acc_ff[2]])
             self.onfly_acc_z.append(self.acc_ff[2])
 
             # target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
@@ -424,10 +426,11 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-        rls_kernel = KernelRecursiveLeastSquares(num_taps=50, delta=0.01, lambda_=0.999, kernel='poly', poly_c=1, poly_d=3)
-        observation = self.onfly_obs_z[-1] # self.obs_buffer[-1][4]
-        desired_output = self.onfly_ref_z[-1]
-        self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
+        if self.interstep_counter>1:
+            rls_kernel = KernelRecursiveLeastSquares(num_taps=50, delta=0.01, lambda_=0.999, kernel='poly', poly_c=1, poly_d=3)
+            observation = self.onfly_obs_z[-1] # self.obs_buffer[-1][4]
+            desired_output = self.onfly_ref_z[-1]
+            self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
         # print("acc_ff:", self.acc_ff[2])
         #########################
         # REPLACE THIS (END) ####
