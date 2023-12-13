@@ -52,6 +52,7 @@ from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
 # REPLACE THIS (END) ####
 #########################
 
+
 class Controller():
     """Template controller class.
 
@@ -62,8 +63,7 @@ class Controller():
                  initial_info,
                  use_firmware: bool = False,
                  buffer_size: int = 100,
-                 verbose: bool = False
-                 ):
+                 verbose: bool = False):
         """Initialization of the controller.
 
         INSTRUCTIONS:
@@ -98,7 +98,7 @@ class Controller():
             self.ctrl = None
         else:
             # Initialize a simple PID Controller for debugging and test.
-            # Do NOT use for the IROS 2022 competition. 
+            # Do NOT use for the IROS 2022 competition.
             self.ctrl = PIDController()
             # Save additonal environment parameters.
             self.KF = initial_info["quadrotor_kf"]
@@ -120,27 +120,34 @@ class Controller():
 
         # Example: hardcode waypoints through the gates.
         if use_firmware:
-            waypoints = [(self.initial_obs[0], self.initial_obs[2], initial_info["gate_dimensions"]["tall"]["height"])]  # Height is hardcoded scenario knowledge.
+            waypoints = [(self.initial_obs[0], self.initial_obs[2],
+                          initial_info["gate_dimensions"]["tall"]["height"])
+                         ]  # Height is hardcoded scenario knowledge.
         else:
-            waypoints = [(self.initial_obs[0], self.initial_obs[2], self.initial_obs[4])]
+            waypoints = [(self.initial_obs[0], self.initial_obs[2],
+                          self.initial_obs[4])]
         for idx, g in enumerate(self.NOMINAL_GATES):
-            height = initial_info["gate_dimensions"]["tall"]["height"] if g[6] == 0 else initial_info["gate_dimensions"]["low"]["height"]
+            height = initial_info["gate_dimensions"]["tall"]["height"] if g[
+                6] == 0 else initial_info["gate_dimensions"]["low"]["height"]
             if g[5] > 0.75 or g[5] < 0:
                 if idx == 2:  # Hardcoded scenario knowledge (direction in which to take gate 2).
-                    
+
                     waypoints.append((g[0], g[1], height))
                 else:
-                    
+
                     waypoints.append((g[0], g[1], height))
             else:
                 if idx == 3:  # Hardcoded scenario knowledge (correct how to take gate 3).
-                    
+
                     waypoints.append((g[0], g[1], height))
                 else:
-                    
+
                     waypoints.append((g[0], g[1], height))
-        waypoints.append([initial_info["x_reference"][0], initial_info["x_reference"][2], initial_info["x_reference"][4]])
-        
+        waypoints.append([
+            initial_info["x_reference"][0], initial_info["x_reference"][2],
+            initial_info["x_reference"][4]
+        ])
+
         waypoints2 = waypoints[1:-1]
 
         waypoints2 = np.array(waypoints2)
@@ -152,7 +159,8 @@ class Controller():
 
         print(waypoints2)
 
-        trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
+        trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
+                                        waypoints2, self.NOMINAL_OBSTACLES)
 
         trajPlanner.optimizer()
 
@@ -173,7 +181,8 @@ class Controller():
         # # print("onfly_timesteps:", onfly_timesteps)
         # timesteps = np.concatenate((takeoff_timesteps, onfly_timesteps))
 
-        timesteps = np.linspace(0, self.flight_duration, int(self.flight_duration*self.CTRL_FREQ))
+        timesteps = np.linspace(0, self.flight_duration,
+                                int(self.flight_duration * self.CTRL_FREQ))
         t_scaled = timesteps
 
         self.p = trajectory(timesteps)
@@ -183,10 +192,10 @@ class Controller():
 
         self.omega = omegaTrajectory(timesteps)
 
-
         self.ref_x = np.sin(timesteps) + self.initial_obs[0]
-        self.ref_y = np.cos(timesteps) -1 + self.initial_obs[2]
-        self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
+        self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
+        self.ref_z = np.array(
+            [self.onflyHeight for ii in range(len(timesteps))])
 
         self.onfly_time = []
         self.onfly_ref_x = []
@@ -201,22 +210,18 @@ class Controller():
 
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
-            plot_trajectory(t_scaled, self.waypoints, self.ref_x, self.ref_y, self.ref_z)
+            plot_trajectory(t_scaled, self.waypoints, self.ref_x, self.ref_y,
+                            self.ref_z)
 
             # Draw the trajectory on PyBullet's GUI.
-            draw_trajectory(initial_info, self.waypoints, self.ref_x, self.ref_y, self.ref_z)
+            draw_trajectory(initial_info, self.waypoints, self.ref_x,
+                            self.ref_y, self.ref_z)
 
         #########################
         # REPLACE THIS (END) ####
         #########################
 
-    def cmdFirmware(self,
-                    time,
-                    obs,
-                    reward=None,
-                    done=None,
-                    info=None
-                    ):
+    def cmdFirmware(self, time, obs, reward=None, done=None, info=None):
         """Pick command sent to the quadrotor through a Crazyswarm/Crazyradio-like interface.
 
         INSTRUCTIONS:
@@ -237,19 +242,19 @@ class Controller():
 
         """
         if self.ctrl is not None:
-            raise RuntimeError("[ERROR] Using method 'cmdFirmware' but Controller was created with 'use_firmware' = False.")
+            raise RuntimeError(
+                "[ERROR] Using method 'cmdFirmware' but Controller was created with 'use_firmware' = False."
+            )
 
-        iteration = int(time*self.CTRL_FREQ)
+        iteration = int(time * self.CTRL_FREQ)
 
         #########################
         # REPLACE THIS (START) ##
         #########################
 
-
         # Handwritten solution for GitHub's getting_stated scenario.
 
         endpoint_freq = self.flight_duration
-
 
         if iteration == 0:
             height = self.takeOffHeight
@@ -260,8 +265,9 @@ class Controller():
             self.takeoffFlag = True
             args = [height, duration]
 
-        elif iteration >= self.takeOffTime*self.CTRL_FREQ and iteration < endpoint_freq*self.CTRL_FREQ:
-            step = min(iteration-self.takeOffTime*self.CTRL_FREQ, len(self.ref_x) -1)
+        elif iteration >= self.takeOffTime * self.CTRL_FREQ and iteration < endpoint_freq * self.CTRL_FREQ:
+            step = min(iteration - self.takeOffTime * self.CTRL_FREQ,
+                       len(self.ref_x) - 1)
             # step = min(iteration*self.CTRL_FREQ, len(self.ref_x) -1)
             self.onfly_time.append(time)
             self.onfly_ref_x.append(self.ref_x[step])
@@ -273,7 +279,8 @@ class Controller():
             self.onfly_obs_z.append(obs[4])
 
             # target_pos = self.p[step]
-            target_pos = np.array([self.ref_x[step], self.ref_y[step], self.onflyHeight])
+            target_pos = np.array(
+                [self.ref_x[step], self.ref_y[step], self.onflyHeight])
             target_vel = np.zeros(3)
             target_acc = np.array([0.0, 0.0, 0.0])
 
@@ -285,15 +292,18 @@ class Controller():
             # target_rpy_rates = self.omega[step]
 
             command_type = Command(1)  # cmdFullState.
-            args = [target_pos, target_vel, target_acc, target_yaw, target_rpy_rates]
+            args = [
+                target_pos, target_vel, target_acc, target_yaw,
+                target_rpy_rates
+            ]
 
-            if step == len(self.ref_x) -1: 
+            if step == len(self.ref_x) - 1:
                 self.completeFlag = True
 
         elif self.completeFlag:
             command_type = Command(-1)  # Notify setpoint stop.
             args = []
-            
+
         # elif iteration == endpoint_freq*self.CTRL_FREQ:
         #     command_type = Command(6)  # Notify setpoint stop.
         #     args = []
@@ -339,13 +349,7 @@ class Controller():
 
         return command_type, args
 
-    def cmdSimOnly(self,
-                   time,
-                   obs,
-                   reward=None,
-                   done=None,
-                   info=None
-                   ):
+    def cmdSimOnly(self, time, obs, reward=None, done=None, info=None):
         """PID per-propeller thrusts with a simplified, software-only PID quadrotor controller.
 
         INSTRUCTIONS:
@@ -366,27 +370,28 @@ class Controller():
 
         """
         if self.ctrl is None:
-            raise RuntimeError("[ERROR] Attempting to use method 'cmdSimOnly' but Controller was created with 'use_firmware' = True.")
+            raise RuntimeError(
+                "[ERROR] Attempting to use method 'cmdSimOnly' but Controller was created with 'use_firmware' = True."
+            )
 
-        iteration = int(time*self.CTRL_FREQ)
+        iteration = int(time * self.CTRL_FREQ)
 
         #########################
         if iteration < len(self.ref_x):
-            target_p = np.array([self.ref_x[iteration], self.ref_y[iteration], self.ref_z[iteration]])
+            target_p = np.array([
+                self.ref_x[iteration], self.ref_y[iteration],
+                self.ref_z[iteration]
+            ])
         else:
-            target_p = np.array([self.ref_x[-1], self.ref_y[-1], self.ref_z[-1]])
+            target_p = np.array(
+                [self.ref_x[-1], self.ref_y[-1], self.ref_z[-1]])
         target_v = np.zeros(3)
         #########################
 
         return target_p, target_v
 
     @timing_step
-    def interStepLearn(self,
-                       action,
-                       obs,
-                       reward,
-                       done,
-                       info):
+    def interStepLearn(self, action, obs, reward, done, info):
         """Learning and controller updates called between control steps.
 
         INSTRUCTIONS:
@@ -404,7 +409,7 @@ class Controller():
         self.interstep_counter += 1
 
         # Store the last step's events.
-        self.action_buffer.append(action)
+        self.action_buffer.append(action)  # [0.0899749 , 0.0852309 , 0.11418897, 0.11787074]
         self.obs_buffer.append(obs)
         self.reward_buffer.append(reward)
         self.done_buffer.append(done)
@@ -413,8 +418,9 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-        print("--------interStepLearn-----------")
-        print("action:", action)
+        if self.interstep_counter < 10:
+            print("--------interStepLearn-----------")
+            print("action:", self.action_buffer)
 
         #########################
         # REPLACE THIS (END) ####
