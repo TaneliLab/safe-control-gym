@@ -211,7 +211,9 @@ def run(test=False):
             obs, reward, done, info = env.step(action)
 
         # Update the controller internal state and models.
-        ctrl.interStepLearn(action, obs, reward, done, info)
+        if command_type == Command.FULLSTATE:
+            # print("------------interStepLearn")
+            ctrl.interStepLearn(action, obs, reward, done, info)
 
         # Add up reward, collisions, violations.
         cumulative_reward += reward
@@ -266,7 +268,9 @@ def run(test=False):
 
             print("real fly trajectory length:", len(ctrl.onfly_obs_x))
             print("length of ref trajectory:", len(ctrl.onfly_ref_x))
-            plot_real_trajectory(ctrl.onfly_time, ctrl.onfly_ref_x, ctrl.onfly_ref_y, ctrl.onfly_ref_z, ctrl.onfly_obs_x, ctrl.onfly_obs_y, ctrl.onfly_obs_z)
+            plot_real_trajectory(ctrl.onfly_time, ctrl.onfly_ref_x, ctrl.onfly_ref_y, ctrl.onfly_ref_z, 
+                                 ctrl.onfly_obs_x, ctrl.onfly_obs_y, ctrl.onfly_obs_z,
+                                 ctrl.onfly_acc_z)
 
             # Plot logging (comment as desired).
             if not test:

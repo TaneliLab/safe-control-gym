@@ -6,7 +6,7 @@ import numpy as np
 class KernelRecursiveLeastSquares:
     def __init__(self, num_taps, delta, lambda_, kernel='rbf', gamma=1.0, poly_c=1, poly_d=2):
         """
-        Initialize the Kernel RLS algorithm.
+        Initialize the Parametric Kernel RLS algorithm.
         :param num_taps: The number of filter coefficients.
         :param delta: Small constant to initialize the P matrix.
         :param lambda_: Forgetting factor, typically close to 1.
@@ -23,7 +23,7 @@ class KernelRecursiveLeastSquares:
         self.kernel_type = kernel
         self.P = (1 / delta) * np.identity(num_taps)
         self.alpha = np.zeros(num_taps)  # Dual coefficients
-        self.X = np.zeros((num_taps, num_taps))  # Kernel matrix
+        self.X = np.zeros((num_taps, 1))  # Kernel matrix for acc_command
 
     def rbf_kernel(self, x, y):
         """ Radial Basis Function kernel. """
@@ -42,79 +42,47 @@ class KernelRecursiveLeastSquares:
         else:
             raise ValueError("Invalid kernel type. Choose 'rbf' or 'poly'.")
 
-    def update(self, input_vector, desired_output):
+    # def update(self, input_vector, desired_output):
+    def update(self, acc_command, observation, desired_output):
         """
-        Update the filter coefficients.
-        :param input_vector: Input vector (signal).
-        :param desired_output: Desired output.
-        :return: Filtered output.
+        Update the filter coefficients and estimate a new acceleration command.
+        :param acc_command: Current acceleration command.
+        :param observation: Observed signal.
+        :param desired_output: Desired output (reference signal).
+        :return: New estimated acceleration command.
         """
-        # Compute kernel between input_vector and all previous inputs
-        k = np.array([self.kernel_function(input_vector, self.X[i]) for i in range(self.num_taps)])
+        # Compute the error between observation and desired output
+        error = observation - desired_output
 
-        # Compute the a priori error
-        apriori_err = desired_output - np.dot(self.alpha, k)
+        # Use acc_command as the sole input to the kernel
+        k = np.array([self.kernel_function(acc_command, self.X[i]) for i in range(self.num_taps)])
+
+        # Reshape k to be a column vector if it's not already
+        k = k.reshape(-1, 1)
 
         # Compute gain vector
         P_k = np.dot(self.P, k)
-        k_P_k = np.dot(k, P_k)
+        k_P_k = np.dot(k.T, P_k)  # Transpose k to get a dot product
         gain = P_k / (self.lambda_ + k_P_k)
 
         # Update the dual coefficients
-        self.alpha += gain * apriori_err
+        self.alpha += gain.flatten() * error  # Flatten gain to match the shape of alpha
 
         # Update the inverse correlation matrix
-        self.P = (self.P - np.outer(gain, P_k)) / self.lambda_
+        self.P = (self.P - np.outer(gain, P_k.T)) / self.lambda_
 
-        # Update the kernel matrix with the new input_vector
+        # Update the kernel matrix with the new acc_command
         self.X = np.roll(self.X, -1, axis=0)
-        self.X[-1] = input_vector
+        self.X[-1] = acc_command
 
-        # Return filtered output
-        return np.dot(self.alpha, k)
+        # Estimate new acceleration command to minimize error in the next iteration
+        new_acc_command = acc_command - np.dot(self.alpha, k)
+        return new_acc_command[0]
 
     
-# Function to generate synthetic data
-def generate_data(num_samples, noise_std):
-    time = np.linspace(0, 20*np.pi, num_samples)
-    desired_signal = np.sin(time)
-    noise = np.random.normal(0, noise_std, num_samples)
-    noisy_input = desired_signal + noise
-    return time, noisy_input, desired_signal
-
 # Example usage
-num_samples = 1000
-noise_std = 0.01
-num_taps = 50  # You can change this to test different numbers of taps
-
-# Generate synthetic data
-time, noisy_input, desired_signal = generate_data(num_samples, noise_std)
-
-# Example usage (you can change the kernel type to 'poly' for polynomial kernel)
-# rls_kernel = KernelRecursiveLeastSquares(num_taps, delta=0.01, lambda_=0.99, kernel='rbf', gamma=0.5)
-# For polynomial kernel, you might use something like:
-rls_kernel = KernelRecursiveLeastSquares(num_taps, delta=0.01, lambda_=0.9, kernel='poly', poly_c=1, poly_d=3)
-
-
-# Apply the Kernel RLS algorithm
-estimated_signal = np.zeros(num_samples)
-for i in range(num_samples):
-    start_idx = max(0, i - num_taps + 1)
-    input_vector = noisy_input[start_idx:i + 1]
-
-    # Ensure input_vector is always of length num_taps
-    if len(input_vector) < num_taps:
-        input_vector = np.pad(input_vector, (num_taps - len(input_vector), 0), 'constant')
-
-    estimated_signal[i] = rls_kernel.update(input_vector, desired_signal[i])
-
-# Plot the results
-plt.figure(figsize=(12, 6))
-plt.plot(time, desired_signal, label='Desired Signal')
-plt.plot(time, noisy_input, label='Noisy Input', alpha=0.5)
-plt.plot(time, estimated_signal, label='Estimated Signal', color='red')
-plt.legend()
-plt.title('Kernel Recursive Least Squares Estimation')
-plt.xlabel('Time')
-plt.ylabel('Signal Amplitude')
-plt.show()
+# rls_kernel = KernelRecursiveLeastSquares(num_taps=10, delta=0.01, lambda_=0.99, kernel='rbf', gamma=0.5)
+# acc_command = [your_acceleration_command]
+# observation = [your_observed_signal]
+# desired_output = [your_reference_signal]
+# estimation = rls_kernel.update(acc_command, observation, desired_output)

@@ -47,7 +47,7 @@ except ImportError:
     from . import example_custom_utils as ecu
 
 from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
-
+from systemIdentification.kRLS import KernelRecursiveLeastSquares
 #########################
 # REPLACE THIS (END) ####
 #########################
@@ -204,9 +204,14 @@ class Controller():
         self.onfly_obs_x = []
         self.onfly_obs_y = []
         self.onfly_obs_z = []
+        self.onfly_acc_z = []
         # self.ref_x = self.p.T[0]
         # self.ref_y = self.p.T[1]
         # self.ref_z = self.p.T[2]
+
+
+        # for acc_command compensation:
+        self.acc_ff = [0, 0, 0]
 
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
@@ -282,7 +287,8 @@ class Controller():
             target_pos = np.array(
                 [self.ref_x[step], self.ref_y[step], self.onflyHeight])
             target_vel = np.zeros(3)
-            target_acc = np.array([0.0, 0.0, 0.0])
+            target_acc = np.array([0.0, 0.0, 0.0 + self.acc_ff[2]])
+            self.onfly_acc_z.append(self.acc_ff[2])
 
             # target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
             # target_vel = np.array([self.ref_dx[step], self.ref_dy[step], self.ref_dz[step]])
@@ -418,10 +424,11 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-        if self.interstep_counter < 10:
-            print("--------interStepLearn-----------")
-            print("action:", self.action_buffer)
-
+        rls_kernel = KernelRecursiveLeastSquares(num_taps=50, delta=0.01, lambda_=0.999, kernel='poly', poly_c=1, poly_d=3)
+        observation = self.onfly_obs_z[-1] # self.obs_buffer[-1][4]
+        desired_output = self.onfly_ref_z[-1]
+        self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
+        # print("acc_ff:", self.acc_ff[2])
         #########################
         # REPLACE THIS (END) ####
         #########################
