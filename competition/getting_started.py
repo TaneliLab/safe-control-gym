@@ -213,8 +213,11 @@ def run(test=False):
         # Update the controller internal state and models.
         if command_type == Command.FULLSTATE:
             # print("------------interStepLearn")
-            ctrl.interStepLearn(action, obs, reward, done, info)
-
+            # print(args[0])
+            # args(t) ->obs(t+1)
+            ctrl.interStepLearn(args, action, obs, reward, done, info)
+        else:
+            print("command_type:", command_type)
         # Add up reward, collisions, violations.
         cumulative_reward += reward
         if info["collision"][1]:
@@ -261,11 +264,9 @@ def run(test=False):
 
         # If an episode is complete, reset the environment.
         if done:
-            # Compare real trajectory and reference trajectory
-            # pos_x = [pos[0] for pos in pos_xyz]
-            # pos_y = [pos[1] for pos in pos_xyz]
-            # pos_z = [pos[2] for pos in pos_xyz]
 
+            # Compare real trajectory and reference trajectory
+            # Todo: plot by log function
             print("real fly trajectory length:", len(ctrl.onfly_obs_x))
             print("length of ref trajectory:", len(ctrl.onfly_ref_x))
             plot_real_trajectory(ctrl.onfly_time, ctrl.onfly_ref_x, ctrl.onfly_ref_y, ctrl.onfly_ref_z, 

@@ -192,13 +192,15 @@ class Controller():
 
         self.omega = omegaTrajectory(timesteps)
 
+
+        # ---------------testing with simple trajectories -------------
         self.ref_x = np.sin(timesteps) + self.initial_obs[0]
         self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
         # constant height
-        # self.ref_z = np.array(
-        #     [self.onflyHeight for ii in range(len(timesteps))])
+        # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
         self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
-
+        
+        # For plotting and Learn to Compensate
         self.onfly_time = []
         self.onfly_ref_x = []
         self.onfly_ref_y = []
@@ -207,10 +209,6 @@ class Controller():
         self.onfly_obs_y = []
         self.onfly_obs_z = []
         self.onfly_acc_z = []
-        # self.ref_x = self.p.T[0]
-        # self.ref_y = self.p.T[1]
-        # self.ref_z = self.p.T[2]
-
 
         # for acc_command compensation:
         self.acc_ff = [0, 0, 0]
@@ -276,6 +274,8 @@ class Controller():
             step = min(iteration - self.takeOffTime * self.CTRL_FREQ,
                        len(self.ref_x) - 1)
             # step = min(iteration*self.CTRL_FREQ, len(self.ref_x) -1)
+            # record onfly reference and obs for LC and plot
+            # TODO: in interStepLearn use log obs and add ref
             self.onfly_time.append(time)
             self.onfly_ref_x.append(self.ref_x[step])
             self.onfly_ref_y.append(self.ref_y[step])
@@ -287,7 +287,7 @@ class Controller():
 
             # target_pos = self.p[step]
             target_pos = np.array(
-                [self.ref_x[step], self.ref_y[step], self.onflyHeight])
+                [self.ref_x[step], self.ref_y[step], self.ref_z[step]])
             target_vel = np.zeros(3)
             target_acc = np.array([0.0, 0.0, self.acc_ff[2]])
             self.onfly_acc_z.append(self.acc_ff[2])
@@ -399,7 +399,7 @@ class Controller():
         return target_p, target_v
 
     @timing_step
-    def interStepLearn(self, action, obs, reward, done, info):
+    def interStepLearn(self, args, action, obs, reward, done, info):
         """Learning and controller updates called between control steps.
 
         INSTRUCTIONS:
@@ -407,6 +407,7 @@ class Controller():
             rewards, done flags, and information dictionaries to learn, adapt, and/or re-plan.
 
         Args:
+            args (List contains 4 array): Most recent command
             action (List): Most recent applied action.
             obs (List): Most recent observation of the quadrotor state.
             reward (float): Most recent reward.
@@ -422,14 +423,24 @@ class Controller():
         self.reward_buffer.append(reward)
         self.done_buffer.append(done)
         self.info_buffer.append(info)
-
+        pos_command = list(args[0])
+        self.acc_ff = list(args[2])
+        
+        # print("pos_command:", pos_command)
+        self.ref_buffer.append(pos_command)
+        # print(self.ref_buffer[-1])
+        print("obs1:", self.obs_buffer[-1])
+        print("ref2:", self.ref_buffer[-1])
         #########################
         # REPLACE THIS (START) ##
         #########################
         if self.interstep_counter>1:
-            rls_kernel = KernelRecursiveLeastSquares(num_taps=50, delta=0.01, lambda_=0.999, kernel='poly', poly_c=1, poly_d=3)
-            observation = self.onfly_obs_z[-1] # self.obs_buffer[-1][4]
-            desired_output = self.onfly_ref_z[-1]
+            rls_kernel = KernelRecursiveLeastSquares(num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
+            observation = self.obs_buffer[-1][4] # self.onfly_obs_z[-1]
+            # observation = self.onfly_obs_z[-1]
+            desired_output = self.ref_buffer[-1][2] # self.onfly_ref_z[-1]
+            # desired_output = self.onfly_ref_z[-1]
+            # self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
             self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
         # print("acc_ff:", self.acc_ff[2])
         #########################
@@ -473,6 +484,8 @@ class Controller():
         self.reward_buffer = deque([], maxlen=self.BUFFER_SIZE)
         self.done_buffer = deque([], maxlen=self.BUFFER_SIZE)
         self.info_buffer = deque([], maxlen=self.BUFFER_SIZE)
+        # add a new buffer for reference signal
+        self.ref_buffer = deque([], maxlen=self.BUFFER_SIZE)
 
         # Counters.
         self.interstep_counter = 0
