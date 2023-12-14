@@ -157,8 +157,6 @@ class Controller():
         self.waypoints = np.array(waypoints)
         deg = 6
 
-        print(waypoints2)
-
         trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
                                         waypoints2, self.NOMINAL_OBSTACLES)
 
@@ -201,14 +199,14 @@ class Controller():
         self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
         
         # For plotting and Learn to Compensate
-        self.onfly_time = []
-        self.onfly_ref_x = []
-        self.onfly_ref_y = []
-        self.onfly_ref_z = []
-        self.onfly_obs_x = []
-        self.onfly_obs_y = []
-        self.onfly_obs_z = []
-        self.onfly_acc_z = []
+        # self.onfly_time = []
+        # self.onfly_ref_x = []
+        # self.onfly_ref_y = []
+        # self.onfly_ref_z = []
+        # self.onfly_obs_x = []
+        # self.onfly_obs_y = []
+        # self.onfly_obs_z = []
+        # self.onfly_acc_z = []
 
         # for acc_command compensation:
         self.acc_ff = [0, 0, 0]
@@ -274,23 +272,21 @@ class Controller():
             step = min(iteration - self.takeOffTime * self.CTRL_FREQ,
                        len(self.ref_x) - 1)
             # step = min(iteration*self.CTRL_FREQ, len(self.ref_x) -1)
-            # record onfly reference and obs for LC and plot
-            # TODO: in interStepLearn use log obs and add ref
-            self.onfly_time.append(time)
-            self.onfly_ref_x.append(self.ref_x[step])
-            self.onfly_ref_y.append(self.ref_y[step])
-            self.onfly_ref_z.append(self.ref_z[step])
-
-            self.onfly_obs_x.append(obs[0])
-            self.onfly_obs_y.append(obs[2])
-            self.onfly_obs_z.append(obs[4])
+            # record onfly reference and obs for plot
+            # self.onfly_time.append(time)
+            # self.onfly_ref_x.append(self.ref_x[step])
+            # self.onfly_ref_y.append(self.ref_y[step])
+            # self.onfly_ref_z.append(self.ref_z[step])
+            # self.onfly_obs_x.append(obs[0])
+            # self.onfly_obs_y.append(obs[2])
+            # self.onfly_obs_z.append(obs[4])
 
             # target_pos = self.p[step]
             target_pos = np.array(
                 [self.ref_x[step], self.ref_y[step], self.ref_z[step]])
             target_vel = np.zeros(3)
             target_acc = np.array([0.0, 0.0, self.acc_ff[2]])
-            self.onfly_acc_z.append(self.acc_ff[2])
+            # self.onfly_acc_z.append(self.acc_ff[2])
 
             # target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
             # target_vel = np.array([self.ref_dx[step], self.ref_dy[step], self.ref_dz[step]])
@@ -425,22 +421,15 @@ class Controller():
         self.info_buffer.append(info)
         pos_command = list(args[0])
         self.acc_ff = list(args[2])
-        
-        # print("pos_command:", pos_command)
         self.ref_buffer.append(pos_command)
-        # print(self.ref_buffer[-1])
-        print("obs1:", self.obs_buffer[-1])
-        print("ref2:", self.ref_buffer[-1])
         #########################
         # REPLACE THIS (START) ##
         #########################
         if self.interstep_counter>1:
+            # TODO: extend to 3dim
             rls_kernel = KernelRecursiveLeastSquares(num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
-            observation = self.obs_buffer[-1][4] # self.onfly_obs_z[-1]
-            # observation = self.onfly_obs_z[-1]
-            desired_output = self.ref_buffer[-1][2] # self.onfly_ref_z[-1]
-            # desired_output = self.onfly_ref_z[-1]
-            # self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
+            observation = self.obs_buffer[-1][4] 
+            desired_output = self.ref_buffer[-1][2]
             self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
         # print("acc_ff:", self.acc_ff[2])
         #########################

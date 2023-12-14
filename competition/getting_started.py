@@ -148,6 +148,14 @@ def run(test=False):
     # Run an experiment.
     ep_start = time.time()
     first_ep_iteration = True
+    onfly_time = []
+    onfly_ref_x = []
+    onfly_ref_y = []
+    onfly_ref_z = []
+    onfly_obs_x = []
+    onfly_obs_y = []
+    onfly_obs_z = []
+    onfly_acc_z = []
     for i in range(config.num_episodes*CTRL_FREQ*env.EPISODE_LEN_SEC):
 
         # Step by keyboard input.
@@ -212,12 +220,19 @@ def run(test=False):
 
         # Update the controller internal state and models.
         if command_type == Command.FULLSTATE:
-            # print("------------interStepLearn")
-            # print(args[0])
-            # args(t) ->obs(t+1)
+            onfly_time.append(curr_time)
+            onfly_obs_x.append(obs[0])
+            onfly_obs_y.append(obs[2])
+            onfly_obs_z.append(obs[4])
+            pos_command = args[0]
+            onfly_ref_x.append(pos_command[0])
+            onfly_ref_y.append(pos_command[1])
+            onfly_ref_z.append(pos_command[2])
+            acc_command = args[2]
+            onfly_acc_z.append(acc_command[2])
             ctrl.interStepLearn(args, action, obs, reward, done, info)
-        else:
-            print("command_type:", command_type)
+        # else:
+        #     print("command_type:", command_type)
         # Add up reward, collisions, violations.
         cumulative_reward += reward
         if info["collision"][1]:
@@ -266,13 +281,16 @@ def run(test=False):
         if done:
 
             # Compare real trajectory and reference trajectory
-            # Todo: plot by log function
-            print("real fly trajectory length:", len(ctrl.onfly_obs_x))
-            print("length of ref trajectory:", len(ctrl.onfly_ref_x))
-            plot_real_trajectory(ctrl.onfly_time, ctrl.onfly_ref_x, ctrl.onfly_ref_y, ctrl.onfly_ref_z, 
-                                 ctrl.onfly_obs_x, ctrl.onfly_obs_y, ctrl.onfly_obs_z,
-                                 ctrl.onfly_acc_z)
-
+            # TODO: Bestway? or plot by log function
+            print("real fly trajectory length:", len(onfly_obs_x))
+            print("length of ref trajectory:", len(onfly_ref_x))
+            # plot_real_trajectory(ctrl.onfly_time, ctrl.onfly_ref_x, ctrl.onfly_ref_y, ctrl.onfly_ref_z, 
+            #                      ctrl.onfly_obs_x, ctrl.onfly_obs_y, ctrl.onfly_obs_z,
+            #                      ctrl.onfly_acc_z)
+            plot_real_trajectory(onfly_time, onfly_ref_x, onfly_ref_y, onfly_ref_z, 
+                        onfly_obs_x, onfly_obs_y, onfly_obs_z,
+                        onfly_acc_z)
+            
             # Plot logging (comment as desired).
             if not test:
                 logger.plot(comment="get_start-episode-"+str(episodes_count), autoclose=True)
