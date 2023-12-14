@@ -1,14 +1,9 @@
 # IROS 2022 Safe Robot Learning Competition
 
-[![video](https://img.youtube.com/vi/PwphA_jsNKw/maxresdefault.jpg)](https://www.youtube.com/watch?v=PwphA_jsNKw)
-
-> (The image above links to the video of a flight example)
-
-- [Official Webpage](https://www.dynsyslab.org/iros-2022-safe-robot-learning-competition/)
-- [IROS Competition Page](https://iros2022.org/program/competition/#toggle-id-8)
-- [GitHub Discussions](https://github.com/utiasDSL/safe-control-gym/discussions/categories/iros-2022-competition)
-- [Google Form](https://forms.gle/vEmVK99n1SyaE4Zw9) (to register your interest and receive e-mail updates)
-
+## Test LC Module
+```bash
+    python3 getting_started.py --overrides LC_test.yaml
+```
 ## Description
 
 The task is to design a controller/planner that enables a quadrotor (*Crazyflie 2.x*) to **safely fly through a set of gates and reach a predefined target despite uncertainties in the robot dynamics (e.g., mass and inertia) and the environment (e.g., wind and position of the gates)**. The algorithms will be evaluated regarding their safety (e.g., no collisions) and performance (e.g., time to target). We encourage participants to explore both control and reinforcement learning approaches (e.g., robust, adaptive, predictive, learning-based and optimal control, and model-based/model-free reinforcement learning). The controller/planner has access to the position and attitude measurements provided by a motion capture system and the noisy pose of the closest next gate. The controller can [send position, velocity, acceleration and heading references to an onboard position controller](https://crazyswarm.readthedocs.io/en/latest/api.html#pycrazyswarm.crazyflie.Crazyflie.cmdFullState).
