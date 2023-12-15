@@ -47,7 +47,7 @@ except ImportError:
     from . import example_custom_utils as ecu
 
 from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
-from systemIdentification.kRLS import KernelRecursiveLeastSquares
+from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursiveLeastSquaresMultiDim
 #########################
 # REPLACE THIS (END) ####
 #########################
@@ -126,6 +126,7 @@ class Controller():
         else:
             waypoints = [(self.initial_obs[0], self.initial_obs[2],
                           self.initial_obs[4])]
+        
         for idx, g in enumerate(self.NOMINAL_GATES):
             height = initial_info["gate_dimensions"]["tall"]["height"] if g[
                 6] == 0 else initial_info["gate_dimensions"]["low"]["height"]
@@ -143,6 +144,7 @@ class Controller():
                 else:
 
                     waypoints.append((g[0], g[1], height))
+        
         waypoints.append([
             initial_info["x_reference"][0], initial_info["x_reference"][2],
             initial_info["x_reference"][4]
@@ -179,6 +181,8 @@ class Controller():
         # # print("onfly_timesteps:", onfly_timesteps)
         # timesteps = np.concatenate((takeoff_timesteps, onfly_timesteps))
 
+
+        self.flight_duration = trajPlanner.t
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
         t_scaled = timesteps
@@ -191,12 +195,17 @@ class Controller():
         self.omega = omegaTrajectory(timesteps)
 
 
-        # ---------------testing with simple trajectories -------------
-        self.ref_x = np.sin(timesteps) + self.initial_obs[0]
-        self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
-        # constant height
-        # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
-        self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
+        # # ---------------testing with simple trajectories -------------
+        # self.ref_x = np.sin(timesteps) + self.initial_obs[0]
+        # self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
+        # # constant height
+        # # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
+        # self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
+        
+        self.ref_x = self.p.T[0]
+        self.ref_y = self.p.T[1]
+        self.ref_z = self.p.T[2]
+
         
         # For plotting and Learn to Compensate
         # self.onfly_time = []
@@ -257,18 +266,22 @@ class Controller():
 
         # Handwritten solution for GitHub's getting_stated scenario.
 
-        endpoint_freq = self.flight_duration
-
+        endpoint_freq = self.flight_duration  # can not set as planned duration, seems will not stop
+        
+        endpoint_freq = 9
         if iteration == 0:
             height = self.takeOffHeight
             # duration = 2
-            duration = self.takeOffTime
+            duration = self.takeOffTime -0.2
 
             command_type = Command(2)  # Take-off.
             self.takeoffFlag = True
             args = [height, duration]
+        elif iteration == self.takeOffTime*self.CTRL_FREQ:
+            command_type = Command(6)  # Notify setpoint stop.
+            args = []
 
-        elif iteration >= self.takeOffTime * self.CTRL_FREQ and iteration < endpoint_freq * self.CTRL_FREQ:
+        elif iteration >= self.takeOffTime * self.CTRL_FREQ +1 and iteration < endpoint_freq * self.CTRL_FREQ:
             step = min(iteration - self.takeOffTime * self.CTRL_FREQ,
                        len(self.ref_x) - 1)
             # step = min(iteration*self.CTRL_FREQ, len(self.ref_x) -1)
@@ -282,10 +295,21 @@ class Controller():
             # self.onfly_obs_z.append(obs[4])
 
             # target_pos = self.p[step]
-            target_pos = np.array(
-                [self.ref_x[step], self.ref_y[step], self.ref_z[step]])
-            target_vel = np.zeros(3)
-            target_acc = np.array([0.0, 0.0, self.acc_ff[2]])
+            # -----------Testing Simple plan -------------------
+            # target_pos = np.array(
+            #     [self.ref_x[step], self.ref_y[step], self.ref_z[step]])
+            # target_vel = np.zeros(3)
+            # target_acc = np.array([0.0, 0.0, 0.0])
+            # ----------------------------------------------------
+            target_pos = self.p[step]
+            target_vel = self.v[step]
+            target_acc = self.a[step]
+
+            # LC compensate
+            # target_acc[0] += self.acc_ff[0]
+            # target_acc[1] += self.acc_ff[1]
+            target_acc[2] = self.acc_ff[2]
+
             # self.onfly_acc_z.append(self.acc_ff[2])
 
             # target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
@@ -300,13 +324,21 @@ class Controller():
                 target_pos, target_vel, target_acc, target_yaw,
                 target_rpy_rates
             ]
-
+            
             if step == len(self.ref_x) - 1:
                 self.completeFlag = True
 
-        elif self.completeFlag:
-            command_type = Command(-1)  # Notify setpoint stop.
+        # elif self.completeFlag == True:
+        #     height = 0.
+        #     duration = 5
+
+        #     command_type = Command(3)  # Land.
+        #     args = [height, duration]
+        
+        elif iteration==endpoint_freq * self.CTRL_FREQ:
+            command_type = Command(6)  # Notify setpoint stop.
             args = []
+            print("Notify setpoint stop.")
 
         # elif iteration == endpoint_freq*self.CTRL_FREQ:
         #     command_type = Command(6)  # Notify setpoint stop.
@@ -350,7 +382,7 @@ class Controller():
         #########################
         # REPLACE THIS (END) ####
         #########################
-
+        print(command_type)
         return command_type, args
 
     def cmdSimOnly(self, time, obs, reward=None, done=None, info=None):
@@ -431,6 +463,12 @@ class Controller():
             observation = self.obs_buffer[-1][4] 
             desired_output = self.ref_buffer[-1][2]
             self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
+
+            # # 3 dim case
+            # rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
+            # observation = [self.obs_buffer[-1][0],  self.obs_buffer[-1][2], self.obs_buffer[-1][4]]
+            # desired_output = [self.ref_buffer[-1][0], self.ref_buffer[-1][1], self.ref_buffer[-1][2]]
+            # self.acc_ff = rls_kernel.update(self.acc_ff, observation, desired_output)
         # print("acc_ff:", self.acc_ff[2])
         #########################
         # REPLACE THIS (END) ####

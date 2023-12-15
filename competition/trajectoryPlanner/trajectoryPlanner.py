@@ -29,7 +29,7 @@ VERBOSE = False
 LAMBDA_T = 0.005
 
 # Velocity limit weight
-LAMBDA_V = 10
+LAMBDA_V = 1
 
 # Gate attractor weight
 LAMBDA_GATES = 100
@@ -106,14 +106,6 @@ class TrajectoryPlanner:
         self.cost = self.getCost(self.x)
 
 
-        
-
-        
-
-        
-        
-
-        
     def setWaypoints(self): 
         
         """Sets the waypoints from the gates and start and goal positions"""
