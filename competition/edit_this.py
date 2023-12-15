@@ -306,8 +306,8 @@ class Controller():
             target_acc = self.a[step]
 
             # LC compensate
-            # target_acc[0] += self.acc_ff[0]
-            # target_acc[1] += self.acc_ff[1]
+            target_acc[0] = self.acc_ff[0]
+            target_acc[1] = self.acc_ff[1]
             target_acc[2] = self.acc_ff[2]
 
             # self.onfly_acc_z.append(self.acc_ff[2])
@@ -459,16 +459,16 @@ class Controller():
         #########################
         if self.interstep_counter>1:
             # TODO: extend to 3dim
-            rls_kernel = KernelRecursiveLeastSquares(num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
-            observation = self.obs_buffer[-1][4] 
-            desired_output = self.ref_buffer[-1][2]
-            self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
+            # rls_kernel = KernelRecursiveLeastSquares(num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
+            # observation = self.obs_buffer[-1][4] 
+            # desired_output = self.ref_buffer[-1][2]
+            # self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
 
-            # # 3 dim case
-            # rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
-            # observation = [self.obs_buffer[-1][0],  self.obs_buffer[-1][2], self.obs_buffer[-1][4]]
-            # desired_output = [self.ref_buffer[-1][0], self.ref_buffer[-1][1], self.ref_buffer[-1][2]]
-            # self.acc_ff = rls_kernel.update(self.acc_ff, observation, desired_output)
+            # 3 dim case
+            rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
+            observation = [self.obs_buffer[-1][0],  self.obs_buffer[-1][2], self.obs_buffer[-1][4]]
+            desired_output = [self.ref_buffer[-1][0], self.ref_buffer[-1][1], self.ref_buffer[-1][2]]
+            self.acc_ff = rls_kernel.update(self.acc_ff, observation, desired_output)
         # print("acc_ff:", self.acc_ff[2])
         #########################
         # REPLACE THIS (END) ####

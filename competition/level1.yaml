@@ -59,10 +59,10 @@ quadrotor_config:
     ]
   obstacles:
     [  # x, y, z, r, p, y
-      [1.5, -2.5, 0, 0, 0, 0],
-      [0.5, -1, 0, 0, 0, 0],
-      [1.5, 0, 0, 0, 0, 0],
-      [-1, 0, 0, 0, 0, 0]
+      # [1.5, -2.5, 0, 0, 0, 0],
+      # [0.5, -1, 0, 0, 0, 0],
+      # [1.5, 0, 0, 0, 0, 0],
+      # [-1, 0, 0, 0, 0, 0]
     ]
 
   # Randomization of the initial state
@@ -164,14 +164,14 @@ quadrotor_config:
   # Disturbances
   disturbances:
     # Additive noise on the commanded input action
-    # action:
-    #   - disturbance_func: white_noise
-    #     std: 0.001
-    # # Random external force applied to the quadrotor (e.g. a push or wind)
-    # dynamics:
-    #   - disturbance_func: uniform
-    #     low: [-0.1, -0.1, -0.1]
-    #     high: [0.1, 0.1, 0.1]
+    action:
+      - disturbance_func: white_noise
+        std: 0.001
+    # Random external force applied to the quadrotor (e.g. a push or wind)
+    dynamics:
+      - disturbance_func: uniform
+        low: [-0.1, -0.1, -0.1]
+        high: [0.1, 0.1, 0.1]
 
 
 
