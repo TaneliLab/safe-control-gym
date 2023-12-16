@@ -26,7 +26,7 @@ VERBOSE = False
     The optimization is carried out through an elastic band approach, only soft constraints are enforced and summed in a multiterm cost formulation"""
 
 # Time optimization weight
-LAMBDA_T = 0.005
+LAMBDA_T = 0.001
 
 # Velocity limit weight
 LAMBDA_V = 1

@@ -118,7 +118,6 @@ class Controller():
         # Call a function in module `example_custom_utils`.
         ecu.exampleFunction()
 
-        # Example: hardcode waypoints through the gates.
         if use_firmware:
             waypoints = [(self.initial_obs[0], self.initial_obs[2],
                           initial_info["gate_dimensions"]["tall"]["height"])
@@ -126,51 +125,8 @@ class Controller():
         else:
             waypoints = [(self.initial_obs[0], self.initial_obs[2],
                           self.initial_obs[4])]
-        
-        for idx, g in enumerate(self.NOMINAL_GATES):
-            height = initial_info["gate_dimensions"]["tall"]["height"] if g[
-                6] == 0 else initial_info["gate_dimensions"]["low"]["height"]
-            if g[5] > 0.75 or g[5] < 0:
-                if idx == 2:  # Hardcoded scenario knowledge (direction in which to take gate 2).
-
-                    waypoints.append((g[0], g[1], height))
-                else:
-
-                    waypoints.append((g[0], g[1], height))
-            else:
-                if idx == 3:  # Hardcoded scenario knowledge (correct how to take gate 3).
-
-                    waypoints.append((g[0], g[1], height))
-                else:
-
-                    waypoints.append((g[0], g[1], height))
-        
-        waypoints.append([
-            initial_info["x_reference"][0], initial_info["x_reference"][2],
-            initial_info["x_reference"][4]
-        ])
-
-        waypoints2 = waypoints[1:-1]
-
-        waypoints2 = np.array(waypoints2)
-
-        # print(waypoints)
-        # Polynomial fit.
         self.waypoints = np.array(waypoints)
-        deg = 6
 
-        trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
-                                        waypoints2, self.NOMINAL_OBSTACLES)
-
-        trajPlanner.optimizer()
-
-        trajectory = trajPlanner.spline
-
-        omegaTrajectory = trajPlanner.omega_spline
-
-        duration = trajPlanner.t
-
-        duration = 15
         self.flight_duration = 15
         self.takeOffTime = 1
         self.takeOffHeight = 1
@@ -182,32 +138,35 @@ class Controller():
         # timesteps = np.concatenate((takeoff_timesteps, onfly_timesteps))
 
 
-        self.flight_duration = trajPlanner.t
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
         t_scaled = timesteps
 
-        self.p = trajectory(timesteps)
-
-        self.v = trajectory.derivative(1)(timesteps)
-        self.a = trajectory.derivative(2)(timesteps)
-
-        self.omega = omegaTrajectory(timesteps)
-
-
-       
-        
-        self.ref_x = self.p.T[0]
-        self.ref_y = self.p.T[1]
-        self.ref_z = self.p.T[2]
-
         # # ---------------testing with simple trajectories -------------
-        # self.ref_x = np.sin(timesteps) + self.initial_obs[0]
-        # self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
-        # # constant height
-        # # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
-        # self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
+        self.ref_x = np.sin(timesteps) + self.initial_obs[0]
+        self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
+        # constant height
+        # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
+        self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
         
+        self.ref_vx = np.diff(self.ref_x) * self.CTRL_FREQ
+        self.ref_vx = np.insert(self.ref_vx, 0, 0)
+
+        self.ref_vy = np.diff(self.ref_y) * self.CTRL_FREQ
+        self.ref_vy = np.insert(self.ref_vy, 0, 0)
+
+        self.ref_vz = np.diff(self.ref_z) * self.CTRL_FREQ
+        self.ref_vz = np.insert(self.ref_vz, 0, 0)
+
+
+        self.ref_ax = np.diff(self.ref_vx) * self.CTRL_FREQ
+        self.ref_ax = np.insert(self.ref_ax, 0, 0)
+
+        self.ref_ay = np.diff(self.ref_vy) * self.CTRL_FREQ
+        self.ref_ay = np.insert(self.ref_ay, 0, 0)
+
+        self.ref_az = np.diff(self.ref_vz) * self.CTRL_FREQ
+        self.ref_az = np.insert(self.ref_az, 0, 0)
         # For plotting and Learn to Compensate
         # self.onfly_time = []
         # self.onfly_ref_x = []
@@ -269,7 +228,6 @@ class Controller():
 
         endpoint_freq = self.flight_duration  # can not set as planned duration, seems will not stop
         
-        endpoint_freq = 9
         if iteration == 0:
             height = self.takeOffHeight
             # duration = 2
@@ -302,10 +260,12 @@ class Controller():
             # target_vel = np.zeros(3)
             # target_acc = np.array([0.0, 0.0, 0.0])
             # ----------------------------------------------------
-            target_pos = self.p[step]
-            target_vel = self.v[step]
-            target_acc = self.a[step]
-
+            target_pos = np.array([self.ref_x[step], self.ref_y[step], self.ref_z[step]])
+            
+            target_vel = np.array([self.ref_vx[step], self.ref_vy[step], self.ref_vz[step]])
+            target_acc = np.array([self.ref_ax[step], self.ref_ay[step], self.ref_az[step]])
+            # target_vel = np.zeros(3)
+            # target_acc = np.zeros(3)
             # LC compensate
             target_acc[0] = self.acc_ff[0]
             target_acc[1] = self.acc_ff[1]

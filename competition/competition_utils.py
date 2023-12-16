@@ -317,11 +317,15 @@ def plot_real_trajectory(t_scaled,
                     obs_x,
                     obs_y,
                     obs_z,
-                    acc_z
+                    acc
                     ):
     """Plot the trajectory with matplotlib.
 
     """
+
+    acc_x = [a_x[0] for a_x in acc]
+    acc_y = [a_x[1] for a_x in acc]
+    acc_z = [a_x[2] for a_x in acc]
     # Plot each dimension.
     _, axs = plt.subplots(4, 1)
     axs[0].plot(t_scaled, obs_x, label='obs_x')
@@ -336,8 +340,11 @@ def plot_real_trajectory(t_scaled,
     axs[2].plot(t_scaled, ref_z, label='ref_z')
     axs[2].set_ylabel('z (m)')
     axs[2].legend()
-    axs[3].plot(t_scaled, acc_z)
-    axs[3].set_ylabel('z (m/s-2)')
+    axs[3].plot(t_scaled, acc_x, label='acc_x')
+    axs[3].plot(t_scaled, acc_y, label='acc_y')
+    axs[3].plot(t_scaled, acc_z, label='acc_z')
+    axs[3].set_ylabel('acc (m/s-2)')
+    axs[3].legend()
     plt.show(block=False)
     plt.savefig("results/refvsobs_xyz.png")
     plt.pause(2)

@@ -24,6 +24,7 @@ from safe_control_gym.envs.gym_pybullet_drones.Logger import Logger
 
 try:
     from competition_utils import Command, thrusts, plot_real_trajectory
+    # from edit_this import Controller
     from edit_this import Controller
 except ImportError:
     # Test import.
@@ -155,7 +156,7 @@ def run(test=False):
     onfly_obs_x = []
     onfly_obs_y = []
     onfly_obs_z = []
-    onfly_acc_z = []
+    onfly_acc = []
     for i in range(config.num_episodes*CTRL_FREQ*env.EPISODE_LEN_SEC):
 
         # Step by keyboard input.
@@ -229,7 +230,7 @@ def run(test=False):
             onfly_ref_y.append(pos_command[1])
             onfly_ref_z.append(pos_command[2])
             acc_command = args[2]
-            onfly_acc_z.append(acc_command[2])
+            onfly_acc.append(acc_command)
             ctrl.interStepLearn(args, action, obs, reward, done, info)
         # else:
         #     print("command_type:", command_type)
@@ -289,7 +290,7 @@ def run(test=False):
             #                      ctrl.onfly_acc_z)
             plot_real_trajectory(onfly_time, onfly_ref_x, onfly_ref_y, onfly_ref_z, 
                         onfly_obs_x, onfly_obs_y, onfly_obs_z,
-                        onfly_acc_z)
+                        onfly_acc)
             
             # Plot logging (comment as desired).
             if not test:
