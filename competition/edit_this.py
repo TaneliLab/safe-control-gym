@@ -46,7 +46,9 @@ except ImportError:
     # PyTest import.
     from . import example_custom_utils as ecu
 
-from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
+# switch using which planner 
+# from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
+from aggressiveTrajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
 from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursiveLeastSquaresMultiDim
 #########################
 # REPLACE THIS (END) ####
@@ -110,6 +112,7 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
+        self.LC_Module = True
 
         self.takeoffFlag = False
 
@@ -307,9 +310,11 @@ class Controller():
             target_acc = self.a[step]
 
             # LC compensate
-            target_acc[0] = self.acc_ff[0]
-            target_acc[1] = self.acc_ff[1]
-            target_acc[2] = self.acc_ff[2]
+            if self.LC_Module:
+                print("LC module is activated")
+                target_acc[0] = self.acc_ff[0]
+                target_acc[1] = self.acc_ff[1]
+                target_acc[2] = self.acc_ff[2]
 
             # self.onfly_acc_z.append(self.acc_ff[2])
 

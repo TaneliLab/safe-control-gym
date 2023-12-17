@@ -288,6 +288,7 @@ def run(test=False):
             # plot_real_trajectory(ctrl.onfly_time, ctrl.onfly_ref_x, ctrl.onfly_ref_y, ctrl.onfly_ref_z, 
             #                      ctrl.onfly_obs_x, ctrl.onfly_obs_y, ctrl.onfly_obs_z,
             #                      ctrl.onfly_acc_z)
+            # TODO: plot has problem when multiple episode
             plot_real_trajectory(onfly_time, onfly_ref_x, onfly_ref_y, onfly_ref_z, 
                         onfly_obs_x, onfly_obs_y, onfly_obs_z,
                         onfly_acc)
