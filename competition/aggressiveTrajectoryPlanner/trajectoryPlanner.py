@@ -242,6 +242,7 @@ class TrajectoryPlanner:
         knots, coeffs = self.unpackOptVars(x)
 
         self.coeffs = coeffs
+        self.knots = knots
 
         self.cost = self.getCost(x)
 
