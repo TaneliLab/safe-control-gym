@@ -40,8 +40,9 @@ if __name__ == "__main__":
   trajPlan = TrajectoryPlanner(X0, GOAL, GATES, OBSTACLES)
   res = trajPlan.optimizer()
   print(trajPlan.t)
-  trajPlan.plot()
-  plt.show()
+  # trajPlan.plot()
+  trajPlan.plot_xyz()
+  # plt.show()
 
   # forcesDirs = trajPlan.sampleForce()
 

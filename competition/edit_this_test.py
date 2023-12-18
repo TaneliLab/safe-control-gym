@@ -180,6 +180,7 @@ class Controller():
         # for acc_command compensation:
         self.acc_ff = [0, 0, 0]
 
+        self.LC_module = True
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
             plot_trajectory(t_scaled, self.waypoints, self.ref_x, self.ref_y,
@@ -267,9 +268,10 @@ class Controller():
             # target_vel = np.zeros(3)
             # target_acc = np.zeros(3)
             # LC compensate
-            target_acc[0] = self.acc_ff[0]
-            target_acc[1] = self.acc_ff[1]
-            target_acc[2] = self.acc_ff[2]
+            if self.LC_module:
+                target_acc[0] = self.acc_ff[0]
+                target_acc[1] = self.acc_ff[1]
+                target_acc[2] = self.acc_ff[2]
 
             # self.onfly_acc_z.append(self.acc_ff[2])
 

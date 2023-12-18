@@ -112,7 +112,7 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-        self.LC_Module = True
+        self.LC_Module = False
 
         self.takeoffFlag = False
 
