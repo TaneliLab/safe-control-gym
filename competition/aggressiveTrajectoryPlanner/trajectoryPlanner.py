@@ -212,17 +212,19 @@ class TrajectoryPlanner:
         # Time optimization
         cost += LAMBDA_T * self.timeCost(x, spline)
 
-        # Obstacle avoidance
-        cost += LAMBDA_OBST * self.obstacleCost(x)
+        # # Obstacle avoidance
+        # cost += LAMBDA_OBST * self.obstacleCost(x)
 
-        # Gates crossing
-        cost += LAMBDA_GATES * self.gatesCost(x, spline)
+        # # Gates crossing
+        # cost += LAMBDA_GATES * self.gatesCost(x, spline)
 
-        # Velocity limiting
-        cost += LAMBDA_V * self.velocityLimitCost(x, spline)
+        # # Velocity limiting
+        # cost += LAMBDA_V * self.velocityLimitCost(x, spline)
 
-        cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
+        # cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
 
+        # long horizon gate costs
+        cost += LAMBDA_GATES * self.longGatesCost(x, spline)
         return cost
 
     def objective(self, x):
@@ -448,7 +450,6 @@ class TrajectoryPlanner:
         cost = 0
 
         # Compute a number of key positions
-        print("knot:", self.knots[5:-5])
         positions = spline(self.knots[5:-5])
 
         # Iterate through waypoints
@@ -456,7 +457,6 @@ class TrajectoryPlanner:
 
             # Compute the distance between the waypoint and the positions
             delta = np.linalg.norm(positions - w, axis=1)
-
             # Select the closest waypoint and penalize the distance
             cost += np.min(delta)**2
 
@@ -464,9 +464,30 @@ class TrajectoryPlanner:
         return cost
 
     def longGatesCost(self, x, spline):
-        positions = spline(self.knots[5:-5])
+
+        prec = 3
         cost = 0
 
+        
+        num_samples = 5
+        t_query = self.t*np.linspace(0,1,num_samples)
+        t_query = np.repeat(t_query[:, np.newaxis], 3, axis=1)
+        print("t_query:", t_query)
+        positions = spline(t_query)
+        print("positions", positions)
+        # print(self.waypoints)
+        knot_waypoints = self.knots[5:-5]
+        knot_waypoints_expand = np.repeat(knot_waypoints[:, np.newaxis], 3, axis=1)
+        print("expand:", knot_waypoints_expand)
+        for t_vp, vp in zip(knot_waypoints_expand, self.waypoints):
+            print("t_vp:", t_vp, "  vp:", vp)
+            pos_weight = np.linalg.norm(positions - vp, axis=1)
+            print("pos_weight:", pos_weight)
+            time_weight = np.exp(-0.5*prec*(t_query - t_vp)**2) / np.sqrt(2*np.pi/prec)
+            delta = pos_weight*time_weight
+            cost+=np.sum(delta)
+
+    
         return cost
 
     def optimizer(self):
