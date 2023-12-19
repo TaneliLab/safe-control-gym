@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 # PARAMETERS TO CONTROL THE OPTIMIZATION RESULT ---> SEE competition/trajectoryPlanner/parameters.csv to see which where used
 
 # Maximum velocity allowed before constraining the optimization --> Avoids the necessity to use the model of the inputs and of the dynamics if it remains low
-VMAX = 10
+VMAX = 5
 
 # If outputs are needed
 VERBOSE = False
@@ -26,13 +26,13 @@ VERBOSE = False
     The optimization is carried out through an elastic band approach, only soft constraints are enforced and summed in a multiterm cost formulation"""
 
 # Time optimization weight
-LAMBDA_T = 0.005
+LAMBDA_T = 1e-2
 
 # Velocity limit weight
-LAMBDA_V = 10
+LAMBDA_V = 1
 
 # Gate attractor weight
-LAMBDA_GATES = 100
+LAMBDA_GATES = 1e+0
 
 # Obstacle repulsor weight
 LAMBDA_OBST = 1
@@ -89,7 +89,12 @@ class TrajectoryPlanner:
         Which means that not all control points of the spline are used as optimization parameters, rather we use all of them except the first and last. 
         
         Notably, we could clamp the first and last degree+1 control points, in order to fix the derivatives, however we want to maximize the flexibility of the solution so all higher derivatives can be optimized to improve the performance of the drone"""
-        self.optVars = self.coeffs[1:-1]
+        
+        self.optLim = 3
+
+        self.optVars = self.coeffs[self.optLim:-self.optLim]
+
+
 
         # Initial guess of the optmization vector passed to the scipy optimizer: 
             # The vector is composed by the coefficients plus the duration. 
@@ -194,7 +199,7 @@ class TrajectoryPlanner:
         coeffs = copy.copy(self.coeffs)
 
         # Update the coefficients
-        coeffs[1:-1] = optVars
+        coeffs[self.optLim:-self.optLim] = optVars
 
 
         return knots, coeffs
@@ -255,6 +260,8 @@ class TrajectoryPlanner:
 
         knots, coeffs = self.unpackOptVars(x)
 
+        self.knots = knots
+
 
         self.coeffs = coeffs
 
@@ -280,7 +287,7 @@ class TrajectoryPlanner:
         t = abs(x[-1])
 
         # Perturbation numerical derivative
-        dt = 1
+        dt = 1e-5
 
         jacobian = []
 
@@ -338,18 +345,22 @@ class TrajectoryPlanner:
         # Get time
         current_time = x[-1]
 
-        # Compute length
-        pathlength = np.linalg.norm(spline.integrate(0, current_time))
+        # # Compute length
+        # pathlength = np.linalg.norm(spline.integrate(0, current_time))
 
-        # Obtain and discount goal time
-        goal_time = pathlength/self.vmax
+        # # Obtain and discount goal time
+        # goal_time = pathlength/self.vmax
 
-        goal_time += 0.5*goal_time
+        # goal_time += 0.5*goal_time
 
-        cost = 0
+        # cost = 0
 
-        # Compute cost
-        cost += (current_time - goal_time)**2
+        # # Compute cost
+        # cost += (current_time - goal_time)**2
+
+        cost = 0 
+
+        cost += current_time**2
 
         if VERBOSE:
             print('Time cost= ', cost)

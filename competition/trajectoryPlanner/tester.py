@@ -39,19 +39,19 @@ if __name__ == "__main__":
 
   trajPlan = TrajectoryPlanner(X0, GOAL, GATES, OBSTACLES)
   res = trajPlan.optimizer()
-  # print(trajPlan.t)
-  # trajPlan.plot()
-  # plt.show()
+  print(trajPlan.t)
+  trajPlan.plot()
+  plt.show()
 
-  forcesDirs = trajPlan.sampleForce()
+  # forcesDirs = trajPlan.sampleForce()
 
-  matrices = trajPlan.sampleOrientations(forcesDirs)
+  # matrices = trajPlan.sampleOrientations(forcesDirs)
 
-  R_dots = trajPlan.differentiateMatrices(matrices)
+  # R_dots = trajPlan.differentiateMatrices(matrices)
 
-  omegas = trajPlan.getOmegas(matrices, R_dots)
+  # omegas = trajPlan.getOmegas(matrices, R_dots)
 
-  trajPlan.interpolateOmegas(omegas)
+  # trajPlan.interpolateOmegas(omegas)
 
 
 
