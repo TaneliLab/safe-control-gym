@@ -21,7 +21,7 @@ VERBOSE = False
     The optimization is carried out through an elastic band approach, only soft constraints are enforced and summed in a multiterm cost formulation"""
 
 # Time optimization weight
-LAMBDA_T = 100
+LAMBDA_T = 20
 
 # Velocity limit weight
 LAMBDA_V = 10
@@ -469,20 +469,18 @@ class TrajectoryPlanner:
         cost = 0
 
         
-        num_samples = 5
+        num_samples = 30
         t_query = self.t*np.linspace(0,1,num_samples)
         t_query = np.repeat(t_query[:, np.newaxis], 3, axis=1)
-        print("t_query:", t_query)
+        # print("t_query:", t_query)
         positions = spline(t_query)
-        print("positions", positions)
+        # print("positions", positions)
         # print(self.waypoints)
         knot_waypoints = self.knots[5:-5]
         knot_waypoints_expand = np.repeat(knot_waypoints[:, np.newaxis], 3, axis=1)
-        print("expand:", knot_waypoints_expand)
+        # print("expand:", knot_waypoints_expand)
         for t_vp, vp in zip(knot_waypoints_expand, self.waypoints):
-            print("t_vp:", t_vp, "  vp:", vp)
             pos_weight = np.linalg.norm(positions - vp, axis=1)
-            print("pos_weight:", pos_weight)
             time_weight = np.exp(-0.5*prec*(t_query - t_vp)**2) / np.sqrt(2*np.pi/prec)
             delta = pos_weight*time_weight
             cost+=np.sum(delta)
