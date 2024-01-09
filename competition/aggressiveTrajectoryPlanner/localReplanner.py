@@ -70,7 +70,7 @@ class LocalReplanner:
         knots = self.knots # no need to update self.knots
         local_knot = [0]
         time = 0
-        for deltat in self.deltaT:
+        for deltat in deltaT:
             local_knot.append(time+abs(deltat)) # trick: ensure non-decreasing
         knots[-5:5] = local_knot
         return knots
