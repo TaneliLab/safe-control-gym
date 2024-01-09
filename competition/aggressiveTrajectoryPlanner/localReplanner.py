@@ -14,12 +14,13 @@ class LocalReplanner:
     def __init__(self, spline, start: np.array, goal: np.array, gates, obstacles):
 
         self.init_spline = copy.copy(spline)
-        self.coeffs0 = spline.c
-        self.knot0 = spline.t
+        self.spline = copy.copy(spline)
+        self.coeffs0 = self.spline.c
+        self.knot0 = self.spline.t
         self.t = self.knot0[-1]
         self.init_t = self.t
 
-        self.spline = spline
+        
         # self.x = self.coeffs0.flatten()
 
         # include control points and knot time
@@ -67,7 +68,7 @@ class LocalReplanner:
     def deltaT2knot(self, deltaT):
         # update whole self.knots 
 
-        knots = self.knots # no need to update self.knots
+        knots = self.knot0 # no need to update self.knots # risk to change knot0?
         print("deltat2knot:", knots)
         local_knot = [0]
         time = 0
@@ -119,17 +120,19 @@ class LocalReplanner:
         return self.cost
 
     def getCost(self,x):
+
+        #! all coeffs and knots should use local variables
         cost = 0
         # take control points only
-        self.coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         # update the deltaT everytime getCost from objective and jacobian
         deltaT = x[self.len_control_coeffs:]
         # knots = x[self.n-self.tv:]
         print("getCost deltaT:", deltaT)
-        self.knots = self.deltaT2knot(deltaT) 
+        knots = self.deltaT2knot(deltaT) 
 
-        print("CheckgetCost_knots:", self.knots)
-        spline = interpol.BSpline(self.knots, self.coeffs, self.degree)
+        print("CheckgetCost_knots:", knots)
+        spline = interpol.BSpline(knots, coeffs, self.degree)
 
         cost += self.gatesCost(x, spline)
         cost += self.TurningCost(x, spline)
@@ -271,14 +274,14 @@ class LocalReplanner:
         x = self.x
         # separate control points and knots
         # copy format from getCost
-        self.coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        coeffs_opt = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         deltaT = x[self.len_control_coeffs:]
         self.deltaT = deltaT
-        self.knots = self.deltaT2knot(deltaT) 
-        print("knots_opt:", self.knots)
-        print("final_coeffs:", self.coeffs)
-        self.spline = interpol.BSpline(self.knots, self.coeffs, self.degree)
-        self.t = self.knots[-1]
+        knots_opt = self.deltaT2knot(deltaT) 
+        print("knots_opt:", knots_opt)
+        print("final_coeffs:", coeffs_opt)
+        self.opt_spline = interpol.BSpline(knots_opt, coeffs_opt, self.degree)
+        self.t = knots_opt[-1]
 
     def plot_xyz(self):
         """Plot the xyz trajectory
@@ -288,11 +291,11 @@ class LocalReplanner:
 
         time = self.t * np.linspace(0, 1, 100)
         print("plotxyz:", self.init_t)
-        print("init_spline:", self.init_spline.t)
+        print("init_spline:", self.init_spline.c)
         print("knot0:",self.knot0)
         init_time = self.init_t * np.linspace(0, 1, 100)
 
-        p = self.spline(time)
+        p = self.opt_spline(time)
         p_init = self.init_spline(init_time)
 
         axs[0].plot(time, p.T[0], label='opt_x')
@@ -316,7 +319,7 @@ class LocalReplanner:
         test = self.t * np.linspace(0, 1, 100)
         init_time = self.init_t * np.linspace(0, 1, 100)
 
-        p = self.spline(test)
+        p = self.opt_spline(test)
         p_init = self.init_spline(init_time)
 
         ax.text(self.start[0], self.start[1], self.start[2], 'Start')
