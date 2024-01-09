@@ -14,13 +14,20 @@ class LocalReplanner:
     def __init__(self, spline, start: np.array, goal: np.array, gates, obstacles):
 
         self.init_spline = spline
-        self.spline = spline
         self.coeffs0 = spline.c
         self.knot0 = spline.t
         self.t = self.knot0[-1]
         self.init_t = self.t
+
+        self.spline = spline
         # self.x = self.coeffs0.flatten()
-        self.x = np.append(self.coeffs0.flatten(), self.knot0[5:-5])
+
+        # include control points and knot time
+        self.deltaT = self.knot2deltaT(self.knot0)
+        self.x = np.append(self.coeffs0.flatten(), self.deltaT) 
+        self.x_init = self.x
+        self.len_control_coeffs = len(self.coeffs0.flatten())
+        self.len_deltatT_coeffs = len(self.deltaT)
 
         self.knots = self.knot0
         self.coeffs = self.coeffs0
@@ -34,6 +41,8 @@ class LocalReplanner:
         self.degree = 5
         self.optLim = 3
         self.optVars = self.x[self.optLim:-self.optLim]
+
+        # Only update selected coefficients
         self.valid_coeffs_mask = self.validate()
 
         
@@ -44,6 +53,27 @@ class LocalReplanner:
         print("knots:", self.knots.shape)
         print("knots:", self.knots)
         print("x:",self.x)
+
+    def knot2deltaT(self, knots):
+        deltaT = []
+        # knots = self.knots[5:-5]
+        for i in range(len(knots)-1):
+            t1 = knots[i]
+            t2 = knots[i+1]
+            deltaT.append(t2-t1)
+        print("deltaT:", deltaT)
+        return deltaT
+
+    def deltaT2knot(self, deltaT):
+        # update whole self.knots 
+
+        knots = self.knots # no need to update self.knots
+        local_knot = [0]
+        time = 0
+        for deltat in self.deltaT:
+            local_knot.append(time+abs(deltat)) # trick: ensure non-decreasing
+        knots[-5:5] = local_knot
+        return knots
 
     def setWaypoints(self):
         """Sets the waypoints from the gates and start and goal positions"""
@@ -60,30 +90,18 @@ class LocalReplanner:
         return np.array(ways)
 
     def validate(self):
-        # self.optVars = self.x[self.optLim:-self.optLim]
-        self.n = self.x.shape[0]
-        # valid_coeffs_mask = [0 for i in range(self.n + self.tv)]
-        # valid_coeffs_index = [i for i in range(self.n)] # take 0~n-1 
-        # valid_coeffs_index = valid_coeffs_index[3:-3] # take 3~n-3
-        # for i in range(self.n, self.n*2):
-        #     valid_coeffs_index.append(i)
-        # # valid_coeffs_index = [4,5,6]
-        
-        # for index in valid_coeffs_index:
-        #     if index<self.n:
-        #         valid_coeffs_mask[index] = 1
         valid_coeffs_mask = []
         valid_coeffs_index = []
-        for index in range(self.n + self.tv):
-            if (index>=3 and index<self.n-3) or index>=self.n+1: # starttime=0
+        self.len_control_coeffs
+        self.len_deltatT_coeffs
+
+        for index in range(self.len_control_coeffs+self.len_deltatT_coeffs):
+            if (index>=3 and index<self.len_control_coeffs-3) or index>=self.len_control_coeffs:
                 valid_coeffs_mask.append(1)
                 valid_coeffs_index.append(index)
             else:
                 valid_coeffs_mask.append(0)
-
-        print("valid_coeffs_index: ", valid_coeffs_index)
-        if VERBOSE:
-            print("valid_coeffs_index: ", valid_coeffs_index)
+                
         return valid_coeffs_mask
 
 
@@ -95,10 +113,19 @@ class LocalReplanner:
 
     def getCost(self,x):
         cost = 0
-        coeffs = np.reshape(x, (-1, 3))
-        spline = interpol.BSpline(self.knots, coeffs, self.degree)
+        # take control points only
+        self.coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        # update the deltaT everytime getCost from objective and jacobian
+        deltaT = x[self.len_control_coeffs:]
+        # knots = x[self.n-self.tv:]
+        self.knots = self.deltaT2knot(deltaT) 
+
+        print("CheckgetCost_knots:", self.knots)
+        spline = interpol.BSpline(self.knots, self.coeffs, self.degree)
+
         cost += self.gatesCost(x, spline)
         cost += self.TurningCost(x, spline)
+        # cost += self.KnotCost(x,spline,0.5)
 
         return cost
 
@@ -116,7 +143,10 @@ class LocalReplanner:
 
         cost = 0
         # Compute a number of key positions
-        positions = spline(self.knots[5:-5])
+        deltaT = x[self.len_control_coeffs:]
+        knots = self.deltaT2knot(deltaT)
+        key_knot =  knots[5:-5] 
+        positions = spline(key_knot) 
         # print("c:",spline.c)
 
         # Iterate through waypoints
@@ -133,10 +163,14 @@ class LocalReplanner:
         cost = 0 
         # Get control points 
         # key_time = self.knots[5:-5]
-        dt = 0.05
-        positions = spline(self.knots[5:-5])
-        positions_prime = spline(self.knots[5:-5]+dt)
-        knots = self.knots[5:-5]
+        dt = 0.02
+        deltaT = x[self.len_control_coeffs:]
+        knots = self.deltaT2knot(deltaT)
+        key_knots = knots[5:-5]  # only middle time of control points
+        positions = spline(key_knots)
+        positions_prime = spline(key_knots+dt)
+        # knots = self.knots[5:-5]
+
         ## Method 1
         # Select only waypoint velo 
         velos = (positions_prime - positions)/dt
@@ -149,7 +183,7 @@ class LocalReplanner:
             dir_2 = velos[i+1]
             cosine_12 = np.dot(dir_1, dir_2)/(np.linalg.norm(dir_1)*np.linalg.norm(dir_2))
             angle_in_rads = np.arccos(cosine_12)
-            delta_t = knots[i+1] - knots[i]
+            delta_t = key_knots[i+1] - key_knots[i]
             # print(angle_in_rads)
             # print(np.degrees(angle_in_rads))
             cost += angle_in_rads/delta_t
@@ -158,6 +192,19 @@ class LocalReplanner:
             print("Turning cost: ", cost)
         return cost
     
+    # def KnotCost(self,x,spline,minigap):
+    #     # make sure that knots are non-decreasing and has a minmum gap
+
+    #     cost = 0
+    #     knots = x[self.n-self.tv:] # 30: 
+    #     for i in range(len(knots)-1):
+    #         t1 = knots[i]
+    #         t2 = knots[i+1]
+    #         if t1>t2-minigap:
+    #             cost = 1000
+    #     return cost
+
+
     def TimeCost(self,x,spline):
         cost = 0
 
@@ -165,22 +212,40 @@ class LocalReplanner:
         if VERBOSE:
             print("Time cost: ", cost)
         return cost
+    
+
 
 
     def numeric_jacobian(self,x):
+        # x 0:self.n-self.tv control points,  self.n-self.tv: time
         dt = 0.1
+        lr = 0.01
         jacobian = []
         for i in range(x.shape[0]):
-            
-            if self.valid_coeffs_mask[i] == 0:
-                jacobian.append(0)
+            if i<self.len_control_coeffs:
+                # self.len_control_coeffs = 30
+                if self.valid_coeffs_mask[i] == 0:
+                    jacobian.append(0)
+                else:
+                    new_x = copy.copy(x)
+                    new_x[i] += dt
+                    grad = (self.getCost(new_x) - self.getCost(x))/dt
+                    jacobian.append(grad)
             else:
-                new_x = copy.copy(x)
-                new_x[i] += dt
-                grad = (self.getCost(new_x) - self.getCost(x))/dt
-                jacobian.append(grad)
+                if self.valid_coeffs_mask[i] == 0:
+                    jacobian.append(0)
+                else:
+                    # TODO: maybe use sigmoid
+                    # Make the deltat scaling from 0.1 to 0.9
 
+                    new_x = copy.copy(x)
+                    new_x[i] += lr
+                    grad = (self.getCost(new_x) - self.getCost(x))/dt
+                    jacobian.append(grad)
+        # print("jacobian:", jacobian)
         # TODO: add time jacobian
+        # update time coeffs in scaling manner
+        # 1. encode time coeffs as deltat1 deltat2 deltat3 deltat4 deltat5 
         if VERBOSE:
             print("jacobian:", jacobian)
         return jacobian
@@ -195,8 +260,15 @@ class LocalReplanner:
                     tol=1e-10)
         
         self.x = res.x
-        print("x:",self.x)
-        self.coeffs = np.reshape(self.x, (-1,3))
+        x = self.x
+        # separate control points and knots
+        # copy format from getCost
+        self.coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        deltaT = x[self.len_control_coeffs:]
+        self.deltaT = deltaT
+        self.knots = self.deltaT2knot(deltaT) 
+        print("knots_opt:", self.knots)
+        print("final_coeffs:", self.coeffs)
         self.spline = interpol.BSpline(self.knots, self.coeffs, self.degree)
 
     def plot_xyz(self):
