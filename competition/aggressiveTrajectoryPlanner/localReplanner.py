@@ -13,7 +13,7 @@ class LocalReplanner:
 
     def __init__(self, spline, start: np.array, goal: np.array, gates, obstacles):
 
-        self.init_spline = spline
+        self.init_spline = copy.copy(spline)
         self.coeffs0 = spline.c
         self.knot0 = spline.t
         self.t = self.knot0[-1]
@@ -278,6 +278,7 @@ class LocalReplanner:
         print("knots_opt:", self.knots)
         print("final_coeffs:", self.coeffs)
         self.spline = interpol.BSpline(self.knots, self.coeffs, self.degree)
+        self.t = self.knots[-1]
 
     def plot_xyz(self):
         """Plot the xyz trajectory
@@ -286,6 +287,9 @@ class LocalReplanner:
         _, axs = plt.subplots(3, 1)
 
         time = self.t * np.linspace(0, 1, 100)
+        print("plotxyz:", self.init_t)
+        print("init_spline:", self.init_spline.t)
+        print("knot0:",self.knot0)
         init_time = self.init_t * np.linspace(0, 1, 100)
 
         p = self.spline(time)
