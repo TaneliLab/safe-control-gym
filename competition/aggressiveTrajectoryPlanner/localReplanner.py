@@ -72,6 +72,8 @@ class LocalReplanner:
         time = 0
         for deltat in deltaT:
             local_knot.append(time+abs(deltat)) # trick: ensure non-decreasing
+            time += abs(deltaT)
+        print("deltaT2knot_local_knot:", local_knot)
         knots[-5:5] = local_knot
         return knots
 
@@ -118,6 +120,7 @@ class LocalReplanner:
         # update the deltaT everytime getCost from objective and jacobian
         deltaT = x[self.len_control_coeffs:]
         # knots = x[self.n-self.tv:]
+        print("getCost deltaT:", deltaT)
         self.knots = self.deltaT2knot(deltaT) 
 
         print("CheckgetCost_knots:", self.knots)
