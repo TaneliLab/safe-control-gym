@@ -56,7 +56,7 @@ class LocalReplanner:
 
     def knot2deltaT(self, knots):
         deltaT = []
-        # knots = self.knots[5:-5]
+        knots = knots[5:-5]
         for i in range(len(knots)-1):
             t1 = knots[i]
             t2 = knots[i+1]
@@ -68,13 +68,18 @@ class LocalReplanner:
         # update whole self.knots 
 
         knots = self.knots # no need to update self.knots
+        print("deltat2knot:", knots)
         local_knot = [0]
         time = 0
         for deltat in deltaT:
             local_knot.append(time+abs(deltat)) # trick: ensure non-decreasing
-            time += abs(deltaT)
+            time += abs(deltat)
+        for i in range(5):
+            local_knot.append(time)
         print("deltaT2knot_local_knot:", local_knot)
-        knots[-5:5] = local_knot
+        knots[5:] = local_knot
+
+        # !update tail all to same value
         return knots
 
     def setWaypoints(self):
