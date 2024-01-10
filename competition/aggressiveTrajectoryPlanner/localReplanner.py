@@ -15,8 +15,8 @@ class LocalReplanner:
 
         self.init_spline = copy.copy(spline)
         self.spline = copy.copy(spline)
-        self.coeffs0 = self.spline.c
-        self.knot0 = self.spline.t
+        self.coeffs0 = self.init_spline.c
+        self.knot0 = self.init_spline.t
         self.t = self.knot0[-1]
         self.init_t = self.t
 
@@ -24,6 +24,7 @@ class LocalReplanner:
         # self.x = self.coeffs0.flatten()
 
         # include control points and knot time
+        self.deltaT0 = self.knot2deltaT(self.knot0)
         self.deltaT = self.knot2deltaT(self.knot0)
         self.x = np.append(self.coeffs0.flatten(), self.deltaT) 
         self.x_init = self.x
@@ -68,7 +69,7 @@ class LocalReplanner:
     def deltaT2knot(self, deltaT):
         # update whole self.knots 
 
-        knots = self.knot0 # no need to update self.knots # risk to change knot0?
+        knots = copy.copy(self.knot0) # no need to update self.knots # risk to change knot0?
         print("deltat2knot:", knots)
         local_knot = [0]
         time = 0
@@ -280,6 +281,7 @@ class LocalReplanner:
         knots_opt = self.deltaT2knot(deltaT) 
         print("knots_opt:", knots_opt)
         print("final_coeffs:", coeffs_opt)
+        print("deltaT0:", self.deltaT0)
         self.opt_spline = interpol.BSpline(knots_opt, coeffs_opt, self.degree)
         self.t = knots_opt[-1]
 
@@ -288,11 +290,14 @@ class LocalReplanner:
         """
 
         _, axs = plt.subplots(3, 1)
+        knot0 = self.deltaT2knot(self.deltaT0)
+        knot = self.deltaT2knot(self.deltaT)
+
 
         time = self.t * np.linspace(0, 1, 100)
         print("plotxyz:", self.init_t)
-        print("init_spline:", self.init_spline.c)
-        print("knot0:",self.knot0)
+        print("init_spline_c:", self.init_spline.c)
+        print("init_spline_time:", self.init_spline.t)
         init_time = self.init_t * np.linspace(0, 1, 100)
 
         p = self.opt_spline(time)
