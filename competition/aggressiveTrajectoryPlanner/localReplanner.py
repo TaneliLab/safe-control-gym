@@ -132,7 +132,7 @@ class LocalReplanner:
         spline = interpol.BSpline(knots, coeffs, self.degree)
 
         cost += self.gatesCost(x, spline)
-        cost += 10 * self.TurningCost(x, spline)
+        cost += 0.1 * self.TurningCost(x, spline)
         # cost += self.KnotCost(x,spline,0.5)
 
         return cost
