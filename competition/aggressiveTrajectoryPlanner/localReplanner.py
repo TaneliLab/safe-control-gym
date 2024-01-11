@@ -9,6 +9,15 @@ import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 VERBOSE = False
+
+VMAX = 10
+AMAX = 8
+LAMBDA_T = 0.5
+LAMBDA_GATES = 100
+LAMBDA_V = 0
+LAMBDA_ACC = 0
+LAMBDA_OBST = 100
+LAMBDA_TURN = 0
 from SplineFactory import TrajectoryGenerator
 
 
@@ -29,7 +38,10 @@ class LocalReplanner:
         # include control points and knot time
         self.deltaT0 = self.knot2deltaT(self.knot0)
         self.deltaT = self.knot2deltaT(self.knot0)
+        # self.time_scale = [1 for i in range(len(self.deltaT))]
         self.x = np.append(self.coeffs0.flatten(), self.deltaT)
+
+
         self.x_init = self.x
         self.len_control_coeffs = len(self.coeffs0.flatten())
         self.len_deltatT_coeffs = len(self.deltaT)
@@ -42,6 +54,8 @@ class LocalReplanner:
         self.gates = gates
         self.waypoints = self.setWaypoints()
         self.tv = len(self.waypoints)
+        # Obstacle positions
+        self.obstacles = np.array(obstacles)
 
         self.degree = 5
         self.optLim = 3
@@ -49,7 +63,8 @@ class LocalReplanner:
 
         # Only update selected coefficients
         self.valid_coeffs_mask = self.validate()
-
+        self.vmax = VMAX
+        self.amax = AMAX
         print("self.coeffs0", self.coeffs0.shape)
         print("velo:", spline.derivative(1).c.shape)
         print("velo:", spline.derivative(1).c)
@@ -114,6 +129,10 @@ class LocalReplanner:
 
         return valid_coeffs_mask
 
+    # def unpackX(self,x):
+    #     coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+    #     time_scaling = x[self.len_control_coeffs:]
+
     def objective(self, x):
         self.x = x
         self.cost = self.getCost(x)
@@ -128,11 +147,19 @@ class LocalReplanner:
         coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         # update the deltaT everytime getCost from objective and jacobian
         deltaT = x[self.len_control_coeffs:]
+
+
         knots = self.deltaT2knot(deltaT)
+        # update spline for cost
         spline = interpol.BSpline(knots, coeffs, self.degree)
 
-        cost += self.gatesCost(x, spline)
-        cost += 0.1 * self.TurningCost(x, spline)
+        cost += LAMBDA_GATES*self.gatesCost(x, spline)
+        cost += LAMBDA_T*self.TimeCost(x,spline)
+        cost += LAMBDA_V*self.velocityLimitCost(x,spline)
+        cost += LAMBDA_ACC*self.accelerationLimitCost(x,spline)
+        cost += LAMBDA_OBST*self.obstacleCost(x,spline)
+        cost += LAMBDA_TURN * self.TurningCost(x, spline)
+
         # cost += self.KnotCost(x,spline,0.5)
 
         return cost
@@ -152,8 +179,9 @@ class LocalReplanner:
         # Compute a number of key positions
         deltaT = x[self.len_control_coeffs:]
         knots = self.deltaT2knot(deltaT)
+
         key_knot = knots[5:-5]
-        positions = spline(key_knot)
+        positions = spline(key_knot) # positions of control points
         # print("c:",spline.c)
 
         # Iterate through waypoints
@@ -165,7 +193,43 @@ class LocalReplanner:
         if VERBOSE:
             print("Gates cost: ", cost)
         return cost
+    
+    def obstacleCost(self, x, spline):
+        """Penalty for trajectories that are close to obstacles
 
+        Args:
+            x (array): opt vector
+
+        Returns:
+            cost (scalar): Obstacle penalty
+        """
+
+        threshold = 0.5
+        # coeffs = np.reshape(x[:-1], (-1, 3))
+        coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+
+        cost = 0
+
+        # Iterate through obstacles
+        for obst in self.obstacles:
+
+            # Compute distance between obstacle position and control point
+            dist = coeffs - obst[:3]
+
+            # Norm of the distance
+            dist = np.linalg.norm(dist, axis=1)
+
+            # Select the ones below the threshold
+            mask = dist < threshold
+            breached = dist[mask]
+            # print("breached:", breached)
+            # Cost as the difference between the threshold values and the summed breach of constraint
+            cost += (threshold * len(breached) - np.sum(breached))**2
+
+        if VERBOSE:
+            print("obstacle cost: ", cost)
+        return cost
+    
     def TurningCost(self, x, spline):
         cost = 0
         # Get control points
@@ -214,11 +278,75 @@ class LocalReplanner:
 
     def TimeCost(self, x, spline):
         cost = 0
-
+        deltaT = x[self.len_control_coeffs:]
+        for deltat in deltaT:
+            cost += deltat**2
         # To shorten time for all partion between waypoints
         if VERBOSE:
             print("Time cost: ", cost)
         return cost
+
+    def velocityLimitCost(self, x, spline):
+        """Soft constraint on the velocity. Adds a quadratic penaly whenever the norm of the velocity exceeds the VMAX value in the control points. 
+            It is conservative as the control points define a convex hull within which the velocity is confined.
+
+        Args:
+            x (array): opt vector
+            spline (Bspline): current b-spline
+
+        Returns:
+            cost (scalar): Velocity penalty
+        """
+
+        # Get control points of velocity spline
+        vals = spline.derivative(1).c
+
+        # COmpute the squared norms
+        norms = np.square(np.linalg.norm(vals, axis=1))
+        
+        # Obtain the ones which exceed the limit
+        mask = norms > self.vmax**2
+
+        # Get cost
+        cost = np.sum(norms[mask] - self.vmax**2)**2
+
+        if VERBOSE:
+            print("mask:", mask)
+            print("vals:", vals)
+            print("Velocity limit cost= ", cost)
+
+        return cost
+
+    def accelerationLimitCost(self, x, spline):
+        """Soft constraint on the velocity. Adds a quadratic penaly whenever the norm of the velocity exceeds the VMAX value in the control points. 
+            It is conservative as the control points define a convex hull within which the velocity is confined.
+
+        Args:
+            x (array): opt vector
+            spline (Bspline): current b-spline
+
+        Returns:
+            cost (scalar): Velocity penalty
+        """
+
+        # Get control points of velocity spline
+        vals = spline.derivative(2).c
+
+        # COmpute the squared norms
+        norms = np.square(np.linalg.norm(vals, axis=1))
+
+        # Obtain the ones which exceed the limit
+        mask = norms > self.amax**2
+
+        # Get cost
+        cost = np.sum(norms[mask] - self.amax**2)**2
+
+        if VERBOSE:
+
+            print("Acceleration limit cost= ", cost)
+
+        return cost
+
 
     def numeric_jacobian(self, x):
         # x 0:self.n-self.tv control points,  self.n-self.tv: time
@@ -243,13 +371,9 @@ class LocalReplanner:
                     # Make the deltat scaling from 0.1 to 0.9
 
                     new_x = copy.copy(x)
-                    new_x[i] += lr
+                    new_x[i] = new_x[i]*2/(1+np.exp(-dt))
                     grad = (self.getCost(new_x) - self.getCost(x)) / dt
                     jacobian.append(grad)
-        # print("jacobian:", jacobian)
-        # TODO: add time jacobian
-        # update time coeffs in scaling manner
-        # 1. encode time coeffs as deltat1 deltat2 deltat3 deltat4 deltat5
         if VERBOSE:
             print("jacobian:", jacobian)
         return jacobian
