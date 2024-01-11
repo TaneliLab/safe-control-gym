@@ -8,15 +8,15 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 
-VERBOSE = False
+VERBOSE = True
 
 VMAX = 10
-AMAX = 8
-LAMBDA_T = 0.5
-LAMBDA_GATES = 100
-LAMBDA_V = 0
-LAMBDA_ACC = 0
-LAMBDA_OBST = 100
+AMAX = 10
+LAMBDA_T = 2
+LAMBDA_GATES = 1000
+LAMBDA_V = 1000
+LAMBDA_ACC = 1000
+LAMBDA_OBST = 1000
 LAMBDA_TURN = 0
 from SplineFactory import TrajectoryGenerator
 
@@ -38,9 +38,10 @@ class LocalReplanner:
         # include control points and knot time
         self.deltaT0 = self.knot2deltaT(self.knot0)
         self.deltaT = self.knot2deltaT(self.knot0)
-        # self.time_scale = [1 for i in range(len(self.deltaT))]
-        self.x = np.append(self.coeffs0.flatten(), self.deltaT)
-
+        self.time_coeffs = [0 for i in range(len(self.deltaT))]
+        # self.x = np.append(self.coeffs0.flatten(), self.deltaT)
+        self.x = np.append(self.coeffs0.flatten(), self.time_coeffs)
+        
 
         self.x_init = self.x
         self.len_control_coeffs = len(self.coeffs0.flatten())
@@ -99,6 +100,11 @@ class LocalReplanner:
         # !update tail all to same value
         return knots
 
+    # def initKnotSchedule(self):
+    #     pathlength = np.linalg.norm(self.spline.integrate(0, self.init_t))
+
+    #     return 0
+
     def setWaypoints(self):
         """Sets the waypoints from the gates and start and goal positions"""
 
@@ -119,9 +125,18 @@ class LocalReplanner:
         self.len_control_coeffs
         self.len_deltatT_coeffs
 
+        # # allow all coeffs except start and goal coeffs
+        # for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
+        #     if (index >= 3 and index < self.len_control_coeffs -
+        #             3) or index >= self.len_control_coeffs:
+        #         valid_coeffs_mask.append(1)
+        #         valid_coeffs_index.append(index)
+        #     else:
+        #         valid_coeffs_mask.append(0)
+
+        # only allow time coeffs 
         for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
-            if (index >= 3 and index < self.len_control_coeffs -
-                    3) or index >= self.len_control_coeffs:
+            if index >= self.len_control_coeffs:
                 valid_coeffs_mask.append(1)
                 valid_coeffs_index.append(index)
             else:
@@ -129,9 +144,17 @@ class LocalReplanner:
 
         return valid_coeffs_mask
 
-    # def unpackX(self,x):
-    #     coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
-    #     time_scaling = x[self.len_control_coeffs:]
+    def unpackX2deltaT(self,x):
+        coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        time_coeffs = x[self.len_control_coeffs:]
+        # map to 0.8~1.2
+        time_scaling = list(map(lambda x: 0.4/(1+np.exp(-x)) + 0.8, time_coeffs))
+        # map to 0.7~1.3
+        time_scaling = list(map(lambda x: 0.6/(1+np.exp(-x)) + 0.7, time_coeffs))
+        deltaT = self.deltaT0.copy()
+        for i in range(len(deltaT)):
+            deltaT[i] *= time_scaling[i]
+        return coeffs, deltaT  
 
     def objective(self, x):
         self.x = x
@@ -144,15 +167,16 @@ class LocalReplanner:
         #! all coeffs and knots should use local variables
         cost = 0
         # take control points only
-        coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
-        # update the deltaT everytime getCost from objective and jacobian
-        deltaT = x[self.len_control_coeffs:]
-
-
+        # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        # # update the deltaT everytime getCost from objective and jacobian
+        # deltaT = x[self.len_control_coeffs:]
+        coeffs, deltaT = self.unpackX2deltaT(x)
+        
         knots = self.deltaT2knot(deltaT)
         # update spline for cost
         spline = interpol.BSpline(knots, coeffs, self.degree)
-
+        # print("x:", x)
+        # print("getcost_deltaT:", deltaT)
         cost += LAMBDA_GATES*self.gatesCost(x, spline)
         cost += LAMBDA_T*self.TimeCost(x,spline)
         cost += LAMBDA_V*self.velocityLimitCost(x,spline)
@@ -177,7 +201,9 @@ class LocalReplanner:
 
         cost = 0
         # Compute a number of key positions
-        deltaT = x[self.len_control_coeffs:]
+        # deltaT = x[self.len_control_coeffs:]
+        coeffs, deltaT = self.unpackX2deltaT(x)
+
         knots = self.deltaT2knot(deltaT)
 
         key_knot = knots[5:-5]
@@ -206,8 +232,8 @@ class LocalReplanner:
 
         threshold = 0.5
         # coeffs = np.reshape(x[:-1], (-1, 3))
-        coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
-
+        # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        coeffs, deltaT = self.unpackX2deltaT(x)
         cost = 0
 
         # Iterate through obstacles
@@ -235,7 +261,8 @@ class LocalReplanner:
         # Get control points
         # key_time = self.knots[5:-5]
         dt = 0.02
-        deltaT = x[self.len_control_coeffs:]
+        # deltaT = x[self.len_control_coeffs:]
+        coeffs, deltaT = self.unpackX2deltaT(x)
         knots = self.deltaT2knot(deltaT)
         key_knots = knots[5:-5]  # only middle time of control points
         positions = spline(key_knots)
@@ -278,10 +305,12 @@ class LocalReplanner:
 
     def TimeCost(self, x, spline):
         cost = 0
-        deltaT = x[self.len_control_coeffs:]
+        # deltaT = x[self.len_control_coeffs:]
+        coeffs, deltaT = self.unpackX2deltaT(x)
         for deltat in deltaT:
-            cost += deltat**2
+            cost += deltat
         # To shorten time for all partion between waypoints
+        cost = cost**2
         if VERBOSE:
             print("Time cost: ", cost)
         return cost
@@ -311,8 +340,8 @@ class LocalReplanner:
         cost = np.sum(norms[mask] - self.vmax**2)**2
 
         if VERBOSE:
-            print("mask:", mask)
-            print("vals:", vals)
+            # print("mask:", mask)
+            # print("vals:", vals)
             print("Velocity limit cost= ", cost)
 
         return cost
@@ -353,6 +382,7 @@ class LocalReplanner:
         dt = 0.1
         lr = 0.01
         jacobian = []
+        
         for i in range(x.shape[0]):
             if i < self.len_control_coeffs:
                 # self.len_control_coeffs = 30
@@ -371,17 +401,18 @@ class LocalReplanner:
                     # Make the deltat scaling from 0.1 to 0.9
 
                     new_x = copy.copy(x)
-                    new_x[i] = new_x[i]*2/(1+np.exp(-dt))
+                    # new_x[i] = new_x[i]*2/(1+np.exp(-dt))
+                    new_x[i] += lr
                     grad = (self.getCost(new_x) - self.getCost(x)) / dt
                     jacobian.append(grad)
-        if VERBOSE:
-            print("jacobian:", jacobian)
+        # if VERBOSE:
+        #     print("jacobian:", jacobian)
         return jacobian
 
     def optimizer(self):
         res = opt.minimize(self.objective,
                            self.x,
-                           method='SLSQP',
+                           method='SLSQP', # try different method
                            jac=self.numeric_jacobian,
                            tol=1e-10)
 
@@ -389,8 +420,7 @@ class LocalReplanner:
         x = self.x
         # separate control points and knots
         # copy format from getCost
-        coeffs_opt = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
-        deltaT = x[self.len_control_coeffs:]
+        coeffs_opt, deltaT = self.unpackX2deltaT(x)
         self.deltaT = deltaT
         knots_opt = self.deltaT2knot(deltaT)
         print("knots_opt:", knots_opt)
@@ -398,6 +428,10 @@ class LocalReplanner:
         print("deltaT0:", self.deltaT0)
         print("deltaT_final:", self.deltaT)
         self.opt_spline = interpol.BSpline(knots_opt, coeffs_opt, self.degree)
+        vals = self.opt_spline.derivative(1).c
+        print("spline_velo:",np.linalg.norm(vals, axis=1) )
+        acc = self.opt_spline.derivative(2).c
+        print("spline_acc:",np.linalg.norm(acc, axis=1) )
         self.t = knots_opt[-1]
 
     def plot_xyz(self):

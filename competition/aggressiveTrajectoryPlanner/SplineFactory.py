@@ -93,7 +93,7 @@ class TrajectoryGenerator:
                                                   bc_type=bc)
 
         # Interpolation of the same B-spline with more control points
-        self.sampleRate = 3
+        self.sampleRate = 2
         self.n = self.n * self.sampleRate
         keytimesteps = np.linspace(0, self.t, self.n)
         self.controlPoints = self.spline(keytimesteps)
