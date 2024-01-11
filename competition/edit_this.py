@@ -325,6 +325,7 @@ class Controller():
             # LC compensate
             if self.LC_Module:
                 print("LC module is activated")
+                # Fx and Fy noise always tricky
                 # target_acc[0] = self.acc_ff[0]
                 # target_acc[1] = self.acc_ff[1]
                 target_acc[2] = self.acc_ff[2]
