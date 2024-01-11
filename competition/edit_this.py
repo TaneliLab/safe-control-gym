@@ -50,6 +50,10 @@ except ImportError:
 # from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
 from aggressiveTrajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
 from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursiveLeastSquaresMultiDim
+
+# New SplineFactory and localReplanner
+from aggressiveTrajectoryPlanner.localReplanner import LocalReplanner
+from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
 #########################
 # REPLACE THIS (END) ####
 #########################
@@ -112,8 +116,9 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-        self.LC_Module = False
-
+        self.LC_Module = True
+        self.Planner_Type = "classical"
+        self.Planner_Type = "replan"
         self.takeoffFlag = False
 
         self.completeFlag = False
@@ -162,14 +167,25 @@ class Controller():
         self.waypoints = np.array(waypoints)
         deg = 6
 
-        trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
-                                        waypoints2, self.NOMINAL_OBSTACLES)
+        # TOM Version
+        if self.Planner_Type == "classic":
+            trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
+                                            waypoints2, self.NOMINAL_OBSTACLES)
 
-        trajPlanner.optimizer()
+            trajPlanner.optimizer()
 
-        trajectory = trajPlanner.spline
+            trajectory = trajPlanner.spline
+            omegaTrajectory = trajPlanner.omega_spline
+        
+        elif self.Planner_Type == "replan":
+            trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
+            traj = trajGen.spline #init spline
 
-        omegaTrajectory = trajPlanner.omega_spline
+            trajPlanner = LocalReplanner(traj, waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
+            trajPlanner.optimizer()
+            trajectory = trajPlanner.spline
+        
+        
 
         duration = trajPlanner.t
 
@@ -185,7 +201,7 @@ class Controller():
         # timesteps = np.concatenate((takeoff_timesteps, onfly_timesteps))
 
 
-        self.flight_duration = trajPlanner.t
+        self.flight_duration = trajPlanner.t # flight duration 
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
         t_scaled = timesteps
@@ -195,11 +211,8 @@ class Controller():
         self.v = trajectory.derivative(1)(timesteps)
         self.a = trajectory.derivative(2)(timesteps)
 
-        self.omega = omegaTrajectory(timesteps)
+        # self.omega = omegaTrajectory(timesteps)
 
-
-       
-        
         self.ref_x = self.p.T[0]
         self.ref_y = self.p.T[1]
         self.ref_z = self.p.T[2]
@@ -312,8 +325,8 @@ class Controller():
             # LC compensate
             if self.LC_Module:
                 print("LC module is activated")
-                target_acc[0] = self.acc_ff[0]
-                target_acc[1] = self.acc_ff[1]
+                # target_acc[0] = self.acc_ff[0]
+                # target_acc[1] = self.acc_ff[1]
                 target_acc[2] = self.acc_ff[2]
 
             # self.onfly_acc_z.append(self.acc_ff[2])
@@ -458,7 +471,7 @@ class Controller():
         self.done_buffer.append(done)
         self.info_buffer.append(info)
         pos_command = list(args[0])
-        self.acc_ff = list(args[2])
+        self.acc_ff = list(args[2]) # current acc command
         self.ref_buffer.append(pos_command)
         #########################
         # REPLACE THIS (START) ##

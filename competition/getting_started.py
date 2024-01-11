@@ -73,12 +73,12 @@ def run(test=False):
         assert(config.quadrotor_config['pyb_freq'] % FIRMWARE_FREQ == 0), "pyb_freq must be a multiple of firmware freq"
         # The env.step is called at a firmware_freq rate, but this is not as intuitive to the end user, and so 
         # we abstract the difference. This allows ctrl_freq to be the rate at which the user sends ctrl signals, 
-        # not the firmware. 
+        # not the firmware.
         config.quadrotor_config['ctrl_freq'] = FIRMWARE_FREQ
         env_func = partial(make, 'quadrotor', **config.quadrotor_config)
         firmware_wrapper = make('firmware',
                     env_func, FIRMWARE_FREQ, CTRL_FREQ
-                    ) 
+                    )
         obs, info = firmware_wrapper.reset()
         info['ctrl_timestep'] = CTRL_DT
         info['ctrl_freq'] = CTRL_FREQ
@@ -96,7 +96,6 @@ def run(test=False):
     # ref_x = ctrl.ref_x
     # ref_y = ctrl.ref_y
     # ref_z = ctrl.ref_z
-    
 
     # Create a logger and counters
     logger = Logger(logging_freq_hz=CTRL_FREQ)

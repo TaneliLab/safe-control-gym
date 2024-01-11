@@ -8,7 +8,7 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 
-VERBOSE = True
+VERBOSE = False
 
 VMAX = 10
 AMAX = 10
@@ -18,7 +18,7 @@ LAMBDA_V = 1000
 LAMBDA_ACC = 1000
 LAMBDA_OBST = 1000
 LAMBDA_TURN = 0
-from SplineFactory import TrajectoryGenerator
+from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
 
 
 class LocalReplanner:
@@ -63,6 +63,7 @@ class LocalReplanner:
         self.optVars = self.x[self.optLim:-self.optLim]
 
         # Only update selected coefficients
+        self.valid_mask = "ONLYTIME"
         self.valid_coeffs_mask = self.validate()
         self.vmax = VMAX
         self.amax = AMAX
@@ -124,23 +125,25 @@ class LocalReplanner:
         valid_coeffs_index = []
         self.len_control_coeffs
         self.len_deltatT_coeffs
-
-        # # allow all coeffs except start and goal coeffs
-        # for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
-        #     if (index >= 3 and index < self.len_control_coeffs -
-        #             3) or index >= self.len_control_coeffs:
-        #         valid_coeffs_mask.append(1)
-        #         valid_coeffs_index.append(index)
-        #     else:
-        #         valid_coeffs_mask.append(0)
+        option = self.valid_mask 
+        # allow all coeffs except start and goal coeffs
+        if option == "ALL":
+            for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
+                if (index >= 3 and index < self.len_control_coeffs -
+                        3) or index >= self.len_control_coeffs:
+                    valid_coeffs_mask.append(1)
+                    valid_coeffs_index.append(index)
+                else:
+                    valid_coeffs_mask.append(0)
 
         # only allow time coeffs 
-        for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
-            if index >= self.len_control_coeffs:
-                valid_coeffs_mask.append(1)
-                valid_coeffs_index.append(index)
-            else:
-                valid_coeffs_mask.append(0)
+        elif option =="ONLYTIME":
+            for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
+                if index >= self.len_control_coeffs:
+                    valid_coeffs_mask.append(1)
+                    valid_coeffs_index.append(index)
+                else:
+                    valid_coeffs_mask.append(0)
 
         return valid_coeffs_mask
 
@@ -432,7 +435,14 @@ class LocalReplanner:
         print("spline_velo:",np.linalg.norm(vals, axis=1) )
         acc = self.opt_spline.derivative(2).c
         print("spline_acc:",np.linalg.norm(acc, axis=1) )
+
+        # copy optimized results
         self.t = knots_opt[-1]
+        self.knots = knots_opt
+        self.coeffs = coeffs_opt
+        self.spline = self.opt_spline
+
+
 
     def plot_xyz(self):
         """Plot the xyz trajectory
