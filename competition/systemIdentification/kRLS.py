@@ -150,7 +150,8 @@ class KernelRecursiveLeastSquaresMultiDim:
             self.P[dim] = (self.P[dim] - np.outer(gain, P_k.T)) / self.lambda_
             self.X[dim] = np.roll(self.X[dim], -1, axis=0)
             self.X[dim][-1] = acc_command
-            new_acc_command = acc_command - np.dot(self.alpha[dim], k)
+            new_acc_command = acc_command - np.dot(self.alpha[dim], k) # plus or minus(ori)?
             new_acc_commands[dim] = new_acc_command[0]
+            print("LC:","_dim",dim,"  error:",error)
 
         return new_acc_commands
