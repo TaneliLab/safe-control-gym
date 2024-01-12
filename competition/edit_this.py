@@ -326,8 +326,8 @@ class Controller():
             if self.LC_Module:
                 print("LC module is activated")
                 # Fx and Fy noise always tricky
-                # target_acc[0] = self.acc_ff[0]
-                # target_acc[1] = self.acc_ff[1]
+                target_acc[0] = self.acc_ff[0]
+                target_acc[1] = self.acc_ff[1]
                 target_acc[2] = self.acc_ff[2]
 
             # self.onfly_acc_z.append(self.acc_ff[2])
@@ -485,6 +485,7 @@ class Controller():
             # self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
 
             # 3 dim case
+            # rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
             rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
             observation = [self.obs_buffer[-1][0],  self.obs_buffer[-1][2], self.obs_buffer[-1][4]]
             desired_output = [self.ref_buffer[-1][0], self.ref_buffer[-1][1], self.ref_buffer[-1][2]]
