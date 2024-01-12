@@ -13,14 +13,16 @@ VERBOSE = False
 VMAX = 10
 AMAX = 10
 LAMBDA_T = 2
-LAMBDA_GATES = 1000
+LAMBDA_GATES = 100
 LAMBDA_V = 1000
-LAMBDA_ACC = 1000
-LAMBDA_OBST = 1000
+LAMBDA_ACC = 0
+LAMBDA_OBST = 0
 LAMBDA_TURN = 0
-from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
 
-
+try:    
+    from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
+except ImportError: 
+    from SplineFactory import TrajectoryGenerator
 class LocalReplanner:
 
     def __init__(self, spline, start: np.array, goal: np.array, gates,
@@ -429,7 +431,17 @@ class LocalReplanner:
                            jac=self.numeric_jacobian,
                            tol=1e-10)
 
-        self.x = res.x
+        # self.x = res.x
+        x = res.x
+        coeffs_opt, deltaT = self.unpackX2deltaT(x)
+        self.deltaT = deltaT
+        knots_opt = self.deltaT2knot(deltaT)
+        self.opt_spline = interpol.BSpline(knots_opt, coeffs_opt, self.degree)
+        self.t = knots_opt[-1]
+        if VERBOSE:
+            self.plot_xyz()
+            self.plot()
+
 
         # optimize over time
         self.valid_mask = "ONLYTIME"
@@ -439,12 +451,7 @@ class LocalReplanner:
                            method='SLSQP', # try different method
                            jac=self.numeric_jacobian,
                            tol=1e-10)
-
         self.x = res.x
-
-
-
-
         x = self.x
         # separate control points and knots
         # copy format from getCost
@@ -466,7 +473,9 @@ class LocalReplanner:
         self.knots = knots_opt
         self.coeffs = coeffs_opt
         self.spline = self.opt_spline
-
+        if VERBOSE:
+            self.plot_xyz()
+            self.plot()
 
 
     def plot_xyz(self):
@@ -542,5 +551,5 @@ if __name__ == "__main__":
 
     trajReplanar = LocalReplanner(traj, X0, GOAL, GATES, OBSTACLES)
     trajReplanar.optimizer()
-    trajReplanar.plot_xyz()
-    trajReplanar.plot()
+    # trajReplanar.plot_xyz()
+    # trajReplanar.plot()
