@@ -145,6 +145,13 @@ class LocalReplanner:
                 else:
                     valid_coeffs_mask.append(0)
 
+        elif option =="ONLYPOS":
+            for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
+                if index >= 3 and index < self.len_control_coeffs - 3:
+                    valid_coeffs_mask.append(1)
+                    valid_coeffs_index.append(index)
+                else:
+                    valid_coeffs_mask.append(0)
         return valid_coeffs_mask
 
     def unpackX2deltaT(self,x):
@@ -413,6 +420,9 @@ class LocalReplanner:
         return jacobian
 
     def optimizer(self):
+        # optimize over control points 
+        self.valid_mask = "ONLYPOS"
+        self.valid_coeffs_mask = self.validate()
         res = opt.minimize(self.objective,
                            self.x,
                            method='SLSQP', # try different method
@@ -420,6 +430,21 @@ class LocalReplanner:
                            tol=1e-10)
 
         self.x = res.x
+
+        # optimize over time
+        self.valid_mask = "ONLYTIME"
+        self.valid_coeffs_mask = self.validate()
+        res = opt.minimize(self.objective,
+                           self.x,
+                           method='SLSQP', # try different method
+                           jac=self.numeric_jacobian,
+                           tol=1e-10)
+
+        self.x = res.x
+
+
+
+
         x = self.x
         # separate control points and knots
         # copy format from getCost
