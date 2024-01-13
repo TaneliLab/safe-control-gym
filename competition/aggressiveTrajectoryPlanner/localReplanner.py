@@ -9,15 +9,16 @@ import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 VERBOSE = False
-
-VMAX = 10
-AMAX = 10
+VERBOSE_PLOT = True
+VMAX = 6
+AMAX = 8
 LAMBDA_T = 2
 LAMBDA_GATES = 100
 LAMBDA_V = 1000
-LAMBDA_ACC = 0
+LAMBDA_ACC = 1000
 LAMBDA_OBST = 0
 LAMBDA_TURN = 0
+LAMBDA_TURN_ANGLE = 2
 
 try:    
     from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
@@ -189,12 +190,15 @@ class LocalReplanner:
         spline = interpol.BSpline(knots, coeffs, self.degree)
         # print("x:", x)
         # print("getcost_deltaT:", deltaT)
+
+        #TODO:Make it flexible to choose cost by control LAMBDA
         cost += LAMBDA_GATES*self.gatesCost(x, spline)
         cost += LAMBDA_T*self.TimeCost(x,spline)
         cost += LAMBDA_V*self.velocityLimitCost(x,spline)
         cost += LAMBDA_ACC*self.accelerationLimitCost(x,spline)
         cost += LAMBDA_OBST*self.obstacleCost(x,spline)
         cost += LAMBDA_TURN * self.TurningCost(x, spline)
+        cost += LAMBDA_TURN_ANGLE * self.TurningCost_OnlyAngle(x, spline)
 
         # cost += self.KnotCost(x,spline,0.5)
 
@@ -268,6 +272,38 @@ class LocalReplanner:
             print("obstacle cost: ", cost)
         return cost
     
+    def TurningCost_OnlyAngle(self, x, spline):
+        cost = 0
+        # Get coeffs
+        dt = 0.01
+        coeffs, deltaT = self.unpackX2deltaT(x)
+        knots = self.deltaT2knot(deltaT)
+        key_knots = knots[5:-5]  # only middle time of control points
+        positions = spline(key_knots)
+        positions_prime = spline(key_knots + dt)
+        # knots = self.knots[5:-5]
+
+        ## Method 1
+        # Select only waypoint velo
+        velos = (positions_prime - positions) / dt
+        # for loop of all two waypoints
+        # calculate turning angle(theta) between two waypoints
+        # get planned time(delta_t) at two waypoints
+        # get theta/delta_t
+        for i in range(len(velos) - 1):
+            dir_1 = velos[i]
+            dir_2 = velos[i + 1]
+            cosine_12 = np.dot(
+                dir_1, dir_2) / (np.linalg.norm(dir_1) * np.linalg.norm(dir_2))
+            angle_in_rads = np.arccos(cosine_12)
+            # print(angle_in_rads)
+            # print(np.degrees(angle_in_rads))
+            cost += angle_in_rads 
+
+        if VERBOSE:
+            print("Turning cost only angle: ", cost)
+        return cost
+
     def TurningCost(self, x, spline):
         cost = 0
         # Get control points
@@ -302,18 +338,6 @@ class LocalReplanner:
         if VERBOSE:
             print("Turning cost: ", cost)
         return cost
-
-    # def KnotCost(self,x,spline,minigap):
-    #     # make sure that knots are non-decreasing and has a minmum gap
-
-    #     cost = 0
-    #     knots = x[self.n-self.tv:] # 30:
-    #     for i in range(len(knots)-1):
-    #         t1 = knots[i]
-    #         t2 = knots[i+1]
-    #         if t1>t2-minigap:
-    #             cost = 1000
-    #     return cost
 
     def TimeCost(self, x, spline):
         cost = 0
@@ -421,14 +445,42 @@ class LocalReplanner:
         #     print("jacobian:", jacobian)
         return jacobian
 
+    def bounds(self):
+        
+        # print(self.waypoints)
+        # print(self.coeffs0)
+        # print(self.time_coeffs)
+        n_pos = len(self.coeffs0)
+        n_time = len(self.time_coeffs)
+        lb_x, lb_y, lb_z = -3, -3, -0.1
+        ub_x, ub_y, ub_z = 3, 3, 2
+
+        lower_bounds_pos = np.array([lb_x, lb_y, lb_z] * n_pos)
+        upper_bounds_pos = np.array([ub_x, ub_y, ub_z] * n_pos)
+
+        # lower_bound_acc_velo = np.array([-0.1, -0.1, -0.1] * 2)
+        # upper_bound_acc_velo = np.array([0.1, 0.1, 0.1] * 2)
+
+        lower_bound_time_sigmoid = np.array([-100] * n_time)
+        upper_bound_time_sigmoid = np.array([100] * n_time)
+
+        lower_bounds = np.concatenate([lower_bounds_pos, lower_bound_time_sigmoid])
+        upper_bounds = np.concatenate([upper_bounds_pos, upper_bound_time_sigmoid])
+        print("lower_bounds:", lower_bounds)
+        bounds = opt.Bounds(lower_bounds, upper_bounds)
+        print("bounds:", bounds)
+        return bounds
+
     def optimizer(self):
         # optimize over control points 
         self.valid_mask = "ONLYPOS"
         self.valid_coeffs_mask = self.validate()
+        bounds = self.bounds()
         res = opt.minimize(self.objective,
                            self.x,
                            method='SLSQP', # try different method
                            jac=self.numeric_jacobian,
+                           bounds=bounds,
                            tol=1e-10)
 
         # self.x = res.x
@@ -438,7 +490,7 @@ class LocalReplanner:
         knots_opt = self.deltaT2knot(deltaT)
         self.opt_spline = interpol.BSpline(knots_opt, coeffs_opt, self.degree)
         self.t = knots_opt[-1]
-        if VERBOSE:
+        if VERBOSE_PLOT:
             self.plot_xyz()
             self.plot()
 
@@ -473,7 +525,7 @@ class LocalReplanner:
         self.knots = knots_opt
         self.coeffs = coeffs_opt
         self.spline = self.opt_spline
-        if VERBOSE:
+        if VERBOSE_PLOT:
             self.plot_xyz()
             self.plot()
 
