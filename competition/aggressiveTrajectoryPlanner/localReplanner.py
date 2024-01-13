@@ -8,17 +8,17 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 
-VERBOSE = False
+VERBOSE = True
 VERBOSE_PLOT = True
 VMAX = 6
-AMAX = 8
+AMAX = 6
 LAMBDA_T = 2
 LAMBDA_GATES = 100
 LAMBDA_V = 1000
 LAMBDA_ACC = 1000
 LAMBDA_OBST = 0
 LAMBDA_TURN = 0
-LAMBDA_TURN_ANGLE = 2
+LAMBDA_TURN_ANGLE = 100
 
 try:    
     from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
@@ -466,9 +466,7 @@ class LocalReplanner:
 
         lower_bounds = np.concatenate([lower_bounds_pos, lower_bound_time_sigmoid])
         upper_bounds = np.concatenate([upper_bounds_pos, upper_bound_time_sigmoid])
-        print("lower_bounds:", lower_bounds)
         bounds = opt.Bounds(lower_bounds, upper_bounds)
-        print("bounds:", bounds)
         return bounds
 
     def optimizer(self):
