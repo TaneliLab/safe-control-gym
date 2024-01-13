@@ -116,7 +116,7 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-        self.LC_Module = True
+        self.LC_Module = False
         self.Planner_Type = "classical"
         self.Planner_Type = "replan"
         self.takeoffFlag = False
@@ -491,6 +491,13 @@ class Controller():
             desired_output = [self.ref_buffer[-1][0], self.ref_buffer[-1][1], self.ref_buffer[-1][2]]
             self.acc_ff = rls_kernel.update(self.acc_ff, observation, desired_output)
             # print("acc_ff:", self.acc_ff)
+        
+        if info['current_target_gate_in_range']:
+            true_gate_pose = info['current_target_gate_pos']
+            current_gate_id = info['current_target_gate_id']
+            # TODO: Design Replan
+            # Simpliest: Move gate control point to new center, and return the new spline
+            # Return to self.p, self.v, self.a
         #########################
         # REPLACE THIS (END) ####
         #########################
