@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import numpy as np
-
+VERBOSE = False
 class KernelRecursiveLeastSquares:
     def __init__(self, num_taps, delta, lambda_, kernel='rbf', gamma=1.0, poly_c=1, poly_d=2):
         """
@@ -135,7 +135,7 @@ class KernelRecursiveLeastSquaresMultiDim:
         new_acc_commands = np.zeros(self.num_dims)
         for dim in range(self.num_dims):
             # Extract the relevant data for the current dimension
-            acc_command = acc_commands[dim]
+            acc_command = acc_commands[dim] 
             observation = observations[dim]
             desired_output = desired_outputs[dim]
 
@@ -152,6 +152,9 @@ class KernelRecursiveLeastSquaresMultiDim:
             self.X[dim][-1] = acc_command
             new_acc_command = acc_command - np.dot(self.alpha[dim], k) # plus or minus(ori)?
             new_acc_commands[dim] = new_acc_command[0]
-            print("LC:","_dim",dim,"  error:",error)
+            if VERBOSE:
+                print("LC:","_dim",dim,"  acc_ori:",acc_command)
+                print("LC:","_dim",dim,"  acc:",new_acc_commands[dim])
+                print("LC:","_dim",dim,"  error:",error)
 
         return new_acc_commands
