@@ -16,7 +16,7 @@ LAMBDA_T = 2
 LAMBDA_GATES = 100
 LAMBDA_V = 1000
 LAMBDA_ACC = 1000
-LAMBDA_OBST = 0
+LAMBDA_OBST = 1000
 LAMBDA_TURN = 0
 LAMBDA_TURN_ANGLE = 100
 
@@ -246,7 +246,7 @@ class LocalReplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 0.5
+        threshold = 1
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
@@ -415,7 +415,7 @@ class LocalReplanner:
 
     def numeric_jacobian(self, x):
         # x 0:self.n-self.tv control points,  self.n-self.tv: time
-        dt = 0.1
+        dt = 1
         lr = 0.01
         jacobian = []
         
@@ -455,6 +455,9 @@ class LocalReplanner:
         lb_x, lb_y, lb_z = -3, -3, -0.1
         ub_x, ub_y, ub_z = 3, 3, 2
 
+        lb_x, lb_y, lb_z = -30, -30, -10
+        ub_x, ub_y, ub_z = 30, 30, 20
+
         lower_bounds_pos = np.array([lb_x, lb_y, lb_z] * n_pos)
         upper_bounds_pos = np.array([ub_x, ub_y, ub_z] * n_pos)
 
@@ -478,7 +481,6 @@ class LocalReplanner:
                            self.x,
                            method='SLSQP', # try different method
                            jac=self.numeric_jacobian,
-                           bounds=bounds,
                            tol=1e-10)
 
         # self.x = res.x
@@ -496,6 +498,8 @@ class LocalReplanner:
         # optimize over time
         self.valid_mask = "ONLYTIME"
         self.valid_coeffs_mask = self.validate()
+
+        # Thinking of regularization
         res = opt.minimize(self.objective,
                            self.x,
                            method='SLSQP', # try different method
@@ -509,6 +513,7 @@ class LocalReplanner:
         self.deltaT = deltaT
         knots_opt = self.deltaT2knot(deltaT)
         print("knots_opt:", knots_opt)
+        print("init_coeffs:", self.coeffs0)
         print("final_coeffs:", coeffs_opt)
         print("deltaT0:", self.deltaT0)
         print("deltaT_final:", self.deltaT)
@@ -588,9 +593,11 @@ if __name__ == "__main__":
              [-0.5, 1.5, 1.]
              #  [-0.9,  1.0  ,  2.   ]
              ]
-
+    # 
     OBSTACLES = [[1.5, -2.5, 0, 0, 0, 0], [0.5, -1, 0, 0, 0, 0],
-                 [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0]]
+                 [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0], 
+                 [2, -1.4, 0, 0, 0, 0], [1.8, -1.4, 0, 0, 0, 0],  # extra
+                 [2.3, -1.4, 0, 0, 0, 0], [0, 0.23, 0, 0, 0, 0]]  # extra
 
     X0 = [-0.9, -2.9, 1]
 
