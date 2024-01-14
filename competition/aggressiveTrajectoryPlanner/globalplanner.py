@@ -14,9 +14,9 @@ VMAX = 8
 AMAX = 8
 LAMBDA_T = 2
 LAMBDA_GATES = 100
-LAMBDA_V = 0
-LAMBDA_ACC = 10000
-LAMBDA_OBST = 0
+LAMBDA_V = 100
+LAMBDA_ACC = 100
+LAMBDA_OBST = 100
 LAMBDA_TURN = 0
 LAMBDA_TURN_ANGLE = 0
 
@@ -129,11 +129,11 @@ class Globalplanner:
         valid_coeffs_index = []
         option = self.valid_mask 
         # allow all coeffs except start and goal coeffs
-        # bug here
+        # To exclude the start(first 9 instead of 3) and goal coeffs
         if option == "ALL":
             for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
-                if (index >= 3 and index < self.len_control_coeffs -
-                        3) or index >= self.len_control_coeffs:
+                if (index >= 9 and index < self.len_control_coeffs -
+                        9) or index >= self.len_control_coeffs:
                     valid_coeffs_mask.append(1)
                     valid_coeffs_index.append(index)
                 else:
@@ -150,7 +150,7 @@ class Globalplanner:
 
         elif option =="ONLYPOS":
             for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
-                if index >= 3 and index < self.len_control_coeffs - 3:
+                if index >= 9 and index < self.len_control_coeffs - 9:
                     valid_coeffs_mask.append(1)
                     valid_coeffs_index.append(index)
                 else:
@@ -443,7 +443,6 @@ class Globalplanner:
                     jacobian.append(grad)
         # if VERBOSE:
         #     print("jacobian:", jacobian)
-        print(x[0:9])
         return jacobian
 
     def bounds(self):
