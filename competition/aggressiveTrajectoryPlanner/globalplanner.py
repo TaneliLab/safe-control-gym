@@ -127,10 +127,9 @@ class Globalplanner:
     def validate(self):
         valid_coeffs_mask = []
         valid_coeffs_index = []
-        self.len_control_coeffs
-        self.len_deltatT_coeffs
         option = self.valid_mask 
         # allow all coeffs except start and goal coeffs
+        # bug here
         if option == "ALL":
             for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
                 if (index >= 3 and index < self.len_control_coeffs -
