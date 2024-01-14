@@ -8,23 +8,24 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 
-VERBOSE = True
+VERBOSE = False
 VERBOSE_PLOT = True
-VMAX = 6
-AMAX = 6
+VMAX = 8
+AMAX = 8
 LAMBDA_T = 2
 LAMBDA_GATES = 100
-LAMBDA_V = 1000
-LAMBDA_ACC = 1000
-LAMBDA_OBST = 1000
+LAMBDA_V = 0
+LAMBDA_ACC = 10000
+LAMBDA_OBST = 0
 LAMBDA_TURN = 0
-LAMBDA_TURN_ANGLE = 100
+LAMBDA_TURN_ANGLE = 0
 
 try:    
     from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
 except ImportError: 
     from SplineFactory import TrajectoryGenerator
-class LocalReplanner:
+
+class Globalplanner:
 
     def __init__(self, spline, start: np.array, goal: np.array, gates,
                  obstacles):
@@ -169,41 +170,6 @@ class LocalReplanner:
             deltaT[i] *= time_scaling[i]
         return coeffs, deltaT  
 
-    def objective(self, x):
-        self.x = x
-        self.cost = self.getCost(x)
-
-        return self.cost
-
-    def getCost(self, x):
-
-        #! all coeffs and knots should use local variables
-        cost = 0
-        # take control points only
-        # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
-        # # update the deltaT everytime getCost from objective and jacobian
-        # deltaT = x[self.len_control_coeffs:]
-        coeffs, deltaT = self.unpackX2deltaT(x)
-        
-        knots = self.deltaT2knot(deltaT)
-        # update spline for cost
-        spline = interpol.BSpline(knots, coeffs, self.degree)
-        # print("x:", x)
-        # print("getcost_deltaT:", deltaT)
-
-        #TODO:Make it flexible to choose cost by control LAMBDA
-        cost += LAMBDA_GATES*self.gatesCost(x, spline)
-        cost += LAMBDA_T*self.TimeCost(x,spline)
-        cost += LAMBDA_V*self.velocityLimitCost(x,spline)
-        cost += LAMBDA_ACC*self.accelerationLimitCost(x,spline)
-        cost += LAMBDA_OBST*self.obstacleCost(x,spline)
-        cost += LAMBDA_TURN * self.TurningCost(x, spline)
-        cost += LAMBDA_TURN_ANGLE * self.TurningCost_OnlyAngle(x, spline)
-
-        # cost += self.KnotCost(x,spline,0.5)
-
-        return cost
-
     def gatesCost(self, x, spline):
         """Cost value that pushes the spline towards the waypoints in the middle of the gates
 
@@ -246,7 +212,7 @@ class LocalReplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 1
+        threshold = 0.5
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
@@ -399,23 +365,58 @@ class LocalReplanner:
 
         # COmpute the squared norms
         norms = np.square(np.linalg.norm(vals, axis=1))
-
+        norms = np.linalg.norm(vals, axis=1)
         # Obtain the ones which exceed the limit
         mask = norms > self.amax**2
-
+        mask = norms > self.amax
         # Get cost
         cost = np.sum(norms[mask] - self.amax**2)**2
-
+        cost = np.sum(norms[mask] - self.amax)**2
         if VERBOSE:
 
             print("Acceleration limit cost= ", cost)
 
         return cost
 
+    def objective(self, x):
+        self.x = x
+        self.cost = self.getCost(x)
+
+        return self.cost
+
+    def getCost(self, x):
+
+        #! all coeffs and knots should use local variables
+        cost = 0
+        # take control points only
+        # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        # # update the deltaT everytime getCost from objective and jacobian
+        # deltaT = x[self.len_control_coeffs:]
+        coeffs, deltaT = self.unpackX2deltaT(x)
+        
+        knots = self.deltaT2knot(deltaT)
+        # update spline for cost
+        spline = interpol.BSpline(knots, coeffs, self.degree)
+        # print("x:", x)
+        # print("getcost_deltaT:", deltaT)
+
+        #TODO:Make it flexible to choose cost by control LAMBDA
+        cost += LAMBDA_GATES*self.gatesCost(x, spline)
+        cost += LAMBDA_T*self.TimeCost(x,spline)
+        cost += LAMBDA_V*self.velocityLimitCost(x,spline)
+        cost += LAMBDA_ACC*self.accelerationLimitCost(x,spline)
+        cost += LAMBDA_OBST*self.obstacleCost(x,spline)
+        cost += LAMBDA_TURN * self.TurningCost(x, spline)
+        cost += LAMBDA_TURN_ANGLE * self.TurningCost_OnlyAngle(x, spline)
+
+        # cost += self.KnotCost(x,spline,0.5)
+
+        return cost
+    
 
     def numeric_jacobian(self, x):
         # x 0:self.n-self.tv control points,  self.n-self.tv: time
-        dt = 1
+        dt = 0.01
         lr = 0.01
         jacobian = []
         
@@ -427,22 +428,23 @@ class LocalReplanner:
                 else:
                     new_x = copy.copy(x)
                     new_x[i] += dt
+                    # print("new_x:", new_x)
+                    # print("x:",x)
                     grad = (self.getCost(new_x) - self.getCost(x)) / dt
+                    # print("grad:", grad)
                     jacobian.append(grad)
             else:
                 if self.valid_coeffs_mask[i] == 0:
                     jacobian.append(0)
                 else:
-                    # TODO: maybe use sigmoid
-                    # Make the deltat scaling from 0.1 to 0.9
-
                     new_x = copy.copy(x)
                     # new_x[i] = new_x[i]*2/(1+np.exp(-dt))
                     new_x[i] += lr
-                    grad = (self.getCost(new_x) - self.getCost(x)) / dt
+                    grad = (self.getCost(new_x) - self.getCost(x)) / lr
                     jacobian.append(grad)
         # if VERBOSE:
         #     print("jacobian:", jacobian)
+        print(x[0:9])
         return jacobian
 
     def bounds(self):
@@ -479,7 +481,8 @@ class LocalReplanner:
         bounds = self.bounds()
         res = opt.minimize(self.objective,
                            self.x,
-                           method='SLSQP', # try different method
+                        #    method='SLSQP', # try different method
+                           method='SLSQP',
                            jac=self.numeric_jacobian,
                            tol=1e-10)
 
@@ -502,7 +505,7 @@ class LocalReplanner:
         # Thinking of regularization
         res = opt.minimize(self.objective,
                            self.x,
-                           method='SLSQP', # try different method
+                           method='trust-constr', # try different method
                            jac=self.numeric_jacobian,
                            tol=1e-10)
         self.x = res.x
@@ -598,7 +601,9 @@ if __name__ == "__main__":
                  [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0], 
                  [2, -1.4, 0, 0, 0, 0], [1.8, -1.4, 0, 0, 0, 0],  # extra
                  [2.3, -1.4, 0, 0, 0, 0], [0, 0.23, 0, 0, 0, 0]]  # extra
-
+    
+    OBSTACLES = [[1.5, -2.5, 0, 0, 0, 0], [0.5, -1, 0, 0, 0, 0],
+                 [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0]]
     X0 = [-0.9, -2.9, 1]
 
     GOAL = [-0.5, 2.9, 0.75]
@@ -606,7 +611,7 @@ if __name__ == "__main__":
     trajGen = TrajectoryGenerator(X0, GOAL, GATES, OBSTACLES)
     traj = trajGen.spline
 
-    trajReplanar = LocalReplanner(traj, X0, GOAL, GATES, OBSTACLES)
+    trajReplanar = Globalplanner(traj, X0, GOAL, GATES, OBSTACLES)
     trajReplanar.optimizer()
     # trajReplanar.plot_xyz()
     # trajReplanar.plot()
