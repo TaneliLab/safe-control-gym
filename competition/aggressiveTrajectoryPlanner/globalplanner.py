@@ -9,10 +9,10 @@ import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 VERBOSE = False
-VERBOSE_PLOT = True
-VMAX = 8
-AMAX = 8
-LAMBDA_T = 2
+VERBOSE_PLOT = False
+VMAX = 6
+AMAX = 6
+LAMBDA_T = 1
 LAMBDA_GATES = 100
 LAMBDA_V = 100
 LAMBDA_ACC = 100
@@ -211,7 +211,7 @@ class Globalplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 0.5
+        threshold = 1
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)

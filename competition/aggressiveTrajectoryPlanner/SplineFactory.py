@@ -8,6 +8,7 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 
+INIT_FLIGHT_TIME = 7
 class TrajectoryGenerator:
 
     def __init__(self, start: np.array, goal: np.array, gates, obstacles):
@@ -36,7 +37,7 @@ class TrajectoryGenerator:
         self.waypoints = self.setWaypoints()
 
         # Time duration of the spline in seconds
-        self.t = 6
+        self.t = INIT_FLIGHT_TIME
         self.init_t = self.t
 
         # B-Spline parametrizing the state-space of the trajectory
