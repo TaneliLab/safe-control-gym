@@ -21,18 +21,18 @@ VERBOSE = False
     The optimization is carried out through an elastic band approach, only soft constraints are enforced and summed in a multiterm cost formulation"""
 
 # Time optimization weight
-LAMBDA_T = 20
+LAMBDA_T = 15
 
 # Velocity limit weight
-LAMBDA_V = 10
+LAMBDA_V = 1
 
-LAMBDA_ACC = 10
+LAMBDA_ACC = 1
 
 # Gate attractor weight
-LAMBDA_GATES = 100
+LAMBDA_GATES = 100#100
 
 # Obstacle repulsor weight
-LAMBDA_OBST = 1
+LAMBDA_OBST = 10
 
 
 class TrajectoryPlanner:
@@ -178,10 +178,8 @@ class TrajectoryPlanner:
 
         # Extract the coefficients which were optimized and reshape them
         optVars = np.reshape(x[:-1], (-1, 3))
-
         # Copied in order not to modify the coefficients stored as class attribute
         coeffs = copy.copy(self.coeffs)
-
         # Update the coefficients
         coeffs[self.optLim:-self.optLim] = optVars
 
@@ -213,18 +211,18 @@ class TrajectoryPlanner:
         cost += LAMBDA_T * self.timeCost(x, spline)
 
         # # Obstacle avoidance
-        # cost += LAMBDA_OBST * self.obstacleCost(x)
+        cost += LAMBDA_OBST * self.obstacleCost(x)
 
-        # # Gates crossing
-        # cost += LAMBDA_GATES * self.gatesCost(x, spline)
+        # Gates crossing
+        cost += LAMBDA_GATES * self.gatesCost(x, spline)
 
-        # # Velocity limiting
-        # cost += LAMBDA_V * self.velocityLimitCost(x, spline)
+        # Velocity limiting
+        cost += LAMBDA_V * self.velocityLimitCost(x, spline)
+        # Acc limiting
+        cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
 
-        # cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
-
-        # long horizon gate costs
-        cost += LAMBDA_GATES * self.longGatesCost(x, spline)
+        # # long horizon gate costs
+        # cost += LAMBDA_GATES * self.longGatesCost(x, spline)
         return cost
 
     def objective(self, x):
@@ -335,6 +333,7 @@ class TrajectoryPlanner:
 
         # Compute cost
         cost += (current_time - goal_time)**2
+        cost += current_time**2
 
         if VERBOSE:
             print('Time cost= ', cost)
@@ -428,7 +427,7 @@ class TrajectoryPlanner:
             # Select the ones below the threshold
             mask = dist < threshold
             breached = dist[mask]
-
+            # print("breached:", breached)
             # Cost as the difference between the threshold values and the summed breach of constraint
             cost += (threshold * len(breached) - np.sum(breached))**2
 
@@ -454,7 +453,8 @@ class TrajectoryPlanner:
 
         # Iterate through waypoints
         for w in self.waypoints:
-
+            print("positions:", positions)
+            print("w:", w)
             # Compute the distance between the waypoint and the positions
             delta = np.linalg.norm(positions - w, axis=1)
             # Select the closest waypoint and penalize the distance
@@ -467,8 +467,6 @@ class TrajectoryPlanner:
 
         prec = 3
         cost = 0
-
-        
         num_samples = 30
         t_query = self.t*np.linspace(0,1,num_samples)
         t_query = np.repeat(t_query[:, np.newaxis], 3, axis=1)
@@ -501,6 +499,7 @@ class TrajectoryPlanner:
         print("Starting to plan")
 
         # Perform the optimization by selecting the objective function, the optimization vector and the jacobian
+        # why here can take x as input?
         res = opt.minimize(self.objective,
                            self.x,
                            method='SLSQP',

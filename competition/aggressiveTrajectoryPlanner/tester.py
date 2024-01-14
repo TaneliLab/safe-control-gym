@@ -1,5 +1,5 @@
 from trajectoryPlanner import TrajectoryPlanner
-
+# from AdaptTrajectoryPlanner import TrajectoryPlanner
 import scipy
 
 import numpy as np
@@ -18,11 +18,13 @@ import matplotlib.pyplot as plt
 GATES = [[ 0.5,   -2.5  ,  1.   ],
  [ 2. , -1.5  ,  0.525],
  [ 0. ,  0.2  ,  0.525],
- [-0.5,  1.5  ,  1.   ]]
-    
+ [-0.5,  1.5  ,  1.   ]
+#  [-0.9,  1.0  ,  2.   ]
+ ]
 
 
-OBSTACLES = [  
+
+OBSTACLES = [
       [1.5, -2.5, 0, 0, 0, 0],
       [0.5, -1, 0, 0, 0, 0],
       [1.5, 0, 0, 0, 0, 0],
@@ -35,24 +37,21 @@ X0 = [ -0.9, -2.9,  1]
 GOAL= [-0.5, 2.9, 0.75]
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
 
-  trajPlan = TrajectoryPlanner(X0, GOAL, GATES, OBSTACLES)
-  res = trajPlan.optimizer()
-  print(trajPlan.t)
-  # trajPlan.plot()
-  trajPlan.plot_xyz()
-  # plt.show()
+    trajPlan = TrajectoryPlanner(X0, GOAL, GATES, OBSTACLES)
+    trajPlan.plot()
+    res = trajPlan.optimizer()
+    trajPlan.plot()
+    trajPlan.plot_xyz()
+    plt.show()
 
-  # forcesDirs = trajPlan.sampleForce()
+    # forcesDirs = trajPlan.sampleForce()
 
-  # matrices = trajPlan.sampleOrientations(forcesDirs)
+    # matrices = trajPlan.sampleOrientations(forcesDirs)
 
-  # R_dots = trajPlan.differentiateMatrices(matrices)
+    # R_dots = trajPlan.differentiateMatrices(matrices)
 
-  # omegas = trajPlan.getOmegas(matrices, R_dots)
+    # omegas = trajPlan.getOmegas(matrices, R_dots)
 
-  # trajPlan.interpolateOmegas(omegas)
-
-
-
+    # trajPlan.interpolateOmegas(omegas)

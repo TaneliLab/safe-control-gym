@@ -226,8 +226,6 @@ class TrajectoryPlanner:
         # Velocity limiting
         cost += LAMBDA_V * self.velocityLimitCost(x, spline)
 
-      
-
         return cost
 
 
@@ -247,7 +245,7 @@ class TrajectoryPlanner:
 
         knots, coeffs = self.unpackOptVars(x)
 
-
+        self.knots = knots
         self.coeffs = coeffs
 
         self.cost = self.getCost(x)
@@ -484,7 +482,6 @@ class TrajectoryPlanner:
 
         # Update class attributes
         self.knots = knots
-
 
         self.coeffs = coeffs
 
