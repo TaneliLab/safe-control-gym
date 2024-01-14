@@ -52,7 +52,7 @@ from aggressiveTrajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
 from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursiveLeastSquaresMultiDim
 
 # New SplineFactory and localReplanner
-from aggressiveTrajectoryPlanner.localReplanner import LocalReplanner
+from aggressiveTrajectoryPlanner.globalplanner import Globalplanner
 from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
 #########################
 # REPLACE THIS (END) ####
@@ -181,7 +181,7 @@ class Controller():
             trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
             traj = trajGen.spline #init spline
 
-            trajPlanner = LocalReplanner(traj, waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
+            trajPlanner = Globalplanner(traj, waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
             trajPlanner.optimizer()
             trajectory = trajPlanner.spline
         
