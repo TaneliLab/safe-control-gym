@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 INIT_FLIGHT_TIME = 7
 class TrajectoryGenerator:
 
-    def __init__(self, start: np.array, goal: np.array, gates, obstacles):
+    def __init__(self, start: np.array, goal: np.array, gates, obstacles, sampleRate):
         """Initialization of the class
 
         Args:
@@ -41,12 +41,14 @@ class TrajectoryGenerator:
         self.init_t = self.t
 
         # B-Spline parametrizing the state-space of the trajectory
+        self.sampleRate = sampleRate
         self.spline = self.interpolate()
         self.init_spline = self.spline
 
         self.x = self.spline.c.flatten()
         self.new_x = self.x
         # self.new_x = self.x + 0.1
+        
 
     def setWaypoints(self):
         """Sets the waypoints from the gates and start and goal positions"""
@@ -70,7 +72,7 @@ class TrajectoryGenerator:
         """
 
         # Compute the initial knot vector to perform interpolation
-        self.n = len(self.waypoints)
+        self.n = len(self.waypoints) # 6: conatin start goal 
 
         knots = np.linspace(0, self.t, self.n)
 
@@ -94,7 +96,6 @@ class TrajectoryGenerator:
                                                   bc_type=bc)
 
         # Interpolation of the same B-spline with more control points
-        self.sampleRate = 2
         self.n = self.n * self.sampleRate
         keytimesteps = np.linspace(0, self.t, self.n)
         self.controlPoints = self.spline(keytimesteps)

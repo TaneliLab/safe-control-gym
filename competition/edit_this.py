@@ -25,7 +25,7 @@ Tips:
 
 """
 import numpy as np
-
+import copy
 from collections import deque
 
 try:
@@ -54,6 +54,7 @@ from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursi
 # New SplineFactory and localReplanner
 from aggressiveTrajectoryPlanner.globalplanner import Globalplanner
 from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
+from aggressiveTrajectoryPlanner.localReplanner import LocalReplanner
 #########################
 # REPLACE THIS (END) ####
 #########################
@@ -120,7 +121,7 @@ class Controller():
         self.Planner_Type = "classical"
         self.Planner_Type = "replan"
         self.takeoffFlag = False
-
+        self.sampleRate = 2
         self.completeFlag = False
         self.low2highlevelFlag = True
         # Call a function in module `example_custom_utils`.
@@ -166,7 +167,7 @@ class Controller():
         # Polynomial fit.
         self.waypoints = np.array(waypoints)
         deg = 6
-
+        
         # TOM Version
         if self.Planner_Type == "classic":
             trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
@@ -179,7 +180,7 @@ class Controller():
 
         elif self.Planner_Type == "replan":
             trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
-                                          waypoints2, self.NOMINAL_OBSTACLES)
+                                          waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate)
             traj = trajGen.spline  #init spline
 
             trajPlanner = Globalplanner(traj, waypoints[0], waypoints[-1],
@@ -187,6 +188,7 @@ class Controller():
             trajPlanner.optimizer()
             trajectory = trajPlanner.spline
 
+        self.trajectory = copy.copy(trajectory)
         duration = trajPlanner.t
 
         self.flight_duration = 15  # for test
@@ -347,6 +349,7 @@ class Controller():
                 self.completeFlag = True
 
         # (Optional) Design for making it return after reach the goal
+                
         # elif iteration >= endpoint_freq * self.CTRL_FREQ and iteration<endpoint_freq*self.CTRL_FREQ +5 and self.low2highlevelFlag:
         #     print("iteration: ", iteration)
         #     print("setpoint stop")
@@ -505,6 +508,16 @@ class Controller():
             # TODO: Design Replan
             # Simpliest: Move gate control point to new center, and return the new spline
             # Return to self.p, self.v, self.a
+            if self.Planner_Type == "replan":
+                trajLocalPlanner = LocalReplanner(self.trajectory, self.sampleRate, current_gate_id, true_gate_pose)
+                trajectory = trajLocalPlanner.hardGateSwitch()
+                if trajectory:
+                    timesteps = np.linspace(0, self.flight_duration,
+                                int(self.flight_duration * self.CTRL_FREQ))
+                    self.p = trajectory(timesteps)
+                    self.v = trajectory.derivative(1)(timesteps)
+                    self.a = trajectory.derivative(2)(timesteps)
+        
         #########################
         # REPLACE THIS (END) ####
         #########################
