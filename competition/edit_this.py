@@ -46,7 +46,7 @@ except ImportError:
     # PyTest import.
     from . import example_custom_utils as ecu
 
-# switch using which planner 
+# switch using which planner
 # from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
 from aggressiveTrajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
 from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursiveLeastSquaresMultiDim
@@ -122,7 +122,7 @@ class Controller():
         self.takeoffFlag = False
 
         self.completeFlag = False
-
+        self.low2highlevelFlag = True
         # Call a function in module `example_custom_utils`.
         ecu.exampleFunction()
 
@@ -134,7 +134,7 @@ class Controller():
         else:
             waypoints = [(self.initial_obs[0], self.initial_obs[2],
                           self.initial_obs[4])]
-        
+
         for idx, g in enumerate(self.NOMINAL_GATES):
             height = initial_info["gate_dimensions"]["tall"]["height"] if g[
                 6] == 0 else initial_info["gate_dimensions"]["low"]["height"]
@@ -152,7 +152,7 @@ class Controller():
                 else:
 
                     waypoints.append((g[0], g[1], height))
-        
+
         waypoints.append([
             initial_info["x_reference"][0], initial_info["x_reference"][2],
             initial_info["x_reference"][4]
@@ -176,21 +176,20 @@ class Controller():
 
             trajectory = trajPlanner.spline
             omegaTrajectory = trajPlanner.omega_spline
-        
-        elif self.Planner_Type == "replan":
-            trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
-            traj = trajGen.spline #init spline
 
-            trajPlanner = Globalplanner(traj, waypoints[0], waypoints[-1], waypoints2, self.NOMINAL_OBSTACLES)
+        elif self.Planner_Type == "replan":
+            trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
+                                          waypoints2, self.NOMINAL_OBSTACLES)
+            traj = trajGen.spline  #init spline
+
+            trajPlanner = Globalplanner(traj, waypoints[0], waypoints[-1],
+                                        waypoints2, self.NOMINAL_OBSTACLES)
             trajPlanner.optimizer()
             trajectory = trajPlanner.spline
-        
-        
 
         duration = trajPlanner.t
 
-        duration = 15
-        self.flight_duration = 15
+        self.flight_duration = 15  # for test
         self.takeOffTime = 1
         self.takeOffHeight = 1
         self.onflyHeight = 1
@@ -200,8 +199,8 @@ class Controller():
         # # print("onfly_timesteps:", onfly_timesteps)
         # timesteps = np.concatenate((takeoff_timesteps, onfly_timesteps))
 
-
-        self.flight_duration = trajPlanner.t # flight duration 
+        self.flight_duration = trajPlanner.t  # flight duration
+        print("flight time plan:", self.flight_duration)
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
         t_scaled = timesteps
@@ -222,8 +221,8 @@ class Controller():
         # self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
         # # constant height
         # # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
-        # self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
-        
+        # self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight
+
         # For plotting and Learn to Compensate
         # self.onfly_time = []
         # self.onfly_ref_x = []
@@ -276,29 +275,28 @@ class Controller():
             )
 
         iteration = int(time * self.CTRL_FREQ)
-
         #########################
         # REPLACE THIS (START) ##
         #########################
 
         # Handwritten solution for GitHub's getting_stated scenario.
 
-        endpoint_freq = self.flight_duration  # can not set as planned duration, seems will not stop
-        
-        endpoint_freq = 9
+        endpoint_freq = self.flight_duration + 1  # can not set as planned duration, seems will not stop
+
+        # endpoint_freq = 9
         if iteration == 0:
             height = self.takeOffHeight
             # duration = 2
-            duration = self.takeOffTime -0.2
+            duration = self.takeOffTime - 0.2
 
             command_type = Command(2)  # Take-off.
             self.takeoffFlag = True
             args = [height, duration]
-        elif iteration == self.takeOffTime*self.CTRL_FREQ:
+        elif iteration == self.takeOffTime * self.CTRL_FREQ:
             command_type = Command(6)  # Notify setpoint stop.
             args = []
 
-        elif iteration >= self.takeOffTime * self.CTRL_FREQ +1 and iteration < endpoint_freq * self.CTRL_FREQ:
+        elif iteration >= self.takeOffTime * self.CTRL_FREQ + 1 and iteration < endpoint_freq * self.CTRL_FREQ:
             step = min(iteration - self.takeOffTime * self.CTRL_FREQ,
                        len(self.ref_x) - 1)
             # step = min(iteration*self.CTRL_FREQ, len(self.ref_x) -1)
@@ -344,56 +342,51 @@ class Controller():
                 target_pos, target_vel, target_acc, target_yaw,
                 target_rpy_rates
             ]
-            
+
             if step == len(self.ref_x) - 1:
                 self.completeFlag = True
 
-        # elif self.completeFlag == True:
-        #     height = 0.
-        #     duration = 5
-
-        #     command_type = Command(3)  # Land.
-        #     args = [height, duration]
-        
-        elif iteration==endpoint_freq * self.CTRL_FREQ:
-            command_type = Command(6)  # Notify setpoint stop.
-            args = []
-            print("Notify setpoint stop.")
-
-        # elif iteration == endpoint_freq*self.CTRL_FREQ:
+        # (Optional) Design for making it return after reach the goal
+        # elif iteration >= endpoint_freq * self.CTRL_FREQ and iteration<endpoint_freq*self.CTRL_FREQ +5 and self.low2highlevelFlag:
+        #     print("iteration: ", iteration)
+        #     print("setpoint stop")
+        #     self.low2highlevelFlag = False
         #     command_type = Command(6)  # Notify setpoint stop.
         #     args = []
 
-        # elif iteration == endpoint_freq*self.CTRL_FREQ+1:
+        # elif iteration == int((endpoint_freq+1) * self.CTRL_FREQ):
         #     x = self.ref_x[-1]
         #     y = self.ref_y[-1]
-        #     z = self.ref_z[-1]
+        #     z = 1.5  # send to high
         #     yaw = 0.
-        #     duration = 0.5
+        #     duration = 1.5
 
         #     command_type = Command(5)  # goTo.
         #     args = [[x, y, z], yaw, duration, False]
 
-        # elif iteration == (endpoint_freq+3)*self.CTRL_FREQ:
+        # elif iteration == int((endpoint_freq + 3) * self.CTRL_FREQ):
+        #     print("sendToInit")
         #     x = self.initial_obs[0]
         #     y = self.initial_obs[2]
         #     z = 1.5
         #     yaw = 0.
-        #     duration = 3
+        #     duration = 6
 
         #     command_type = Command(5)  # goTo.
         #     args = [[x, y, z], yaw, duration, False]
 
-        # elif iteration == (endpoint_freq+7)*self.CTRL_FREQ:
+        # elif iteration == int((endpoint_freq + 9) * self.CTRL_FREQ) + 1:
+        #     print("land")
         #     height = 0.
-        #     duration = 3
+        #     duration = 2
 
         #     command_type = Command(3)  # Land.
         #     args = [height, duration]
 
-        # elif iteration == (endpoint_freq + 12)*self.CTRL_FREQ-1:
-        #     command_type = Command(-1)  # Terminate command to be sent once the trajectory is completed.
-        #     args = []
+        elif iteration == int((endpoint_freq + 12) * self.CTRL_FREQ):
+            command_type = Command(-1)
+            # Terminate command to be sent once the trajectory is completed.
+            args = []
 
         else:
             command_type = Command(0)  # None.
@@ -402,7 +395,7 @@ class Controller():
         #########################
         # REPLACE THIS (END) ####
         #########################
-        
+
         return command_type, args
 
     def cmdSimOnly(self, time, obs, reward=None, done=None, info=None):
@@ -466,32 +459,46 @@ class Controller():
         self.interstep_counter += 1
 
         # Store the last step's events.
-        self.action_buffer.append(action)  # [0.0899749 , 0.0852309 , 0.11418897, 0.11787074]
+        self.action_buffer.append(
+            action)  # [0.0899749 , 0.0852309 , 0.11418897, 0.11787074]
         self.obs_buffer.append(obs)
         self.reward_buffer.append(reward)
         self.done_buffer.append(done)
         self.info_buffer.append(info)
         pos_command = list(args[0])
-        self.acc_ff = list(args[2]) # current acc command
+        self.acc_ff = list(args[2])  # current acc command
         self.ref_buffer.append(pos_command)
         #########################
         # REPLACE THIS (START) ##
         #########################
-        if self.interstep_counter>1:
+        if self.interstep_counter > 1:
             # TODO: extend to 3dim
             # rls_kernel = KernelRecursiveLeastSquares(num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
-            # observation = self.obs_buffer[-1][4] 
+            # observation = self.obs_buffer[-1][4]
             # desired_output = self.ref_buffer[-1][2]
             # self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
 
             # 3 dim case
             # rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
-            rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
-            observation = [self.obs_buffer[-1][0],  self.obs_buffer[-1][2], self.obs_buffer[-1][4]]
-            desired_output = [self.ref_buffer[-1][0], self.ref_buffer[-1][1], self.ref_buffer[-1][2]]
-            self.acc_ff = rls_kernel.update(self.acc_ff, observation, desired_output)
+            rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3,
+                                                             num_taps=60,
+                                                             delta=0.01,
+                                                             lambda_=0.99,
+                                                             kernel='poly',
+                                                             poly_c=1,
+                                                             poly_d=3)
+            observation = [
+                self.obs_buffer[-1][0], self.obs_buffer[-1][2],
+                self.obs_buffer[-1][4]
+            ]
+            desired_output = [
+                self.ref_buffer[-1][0], self.ref_buffer[-1][1],
+                self.ref_buffer[-1][2]
+            ]
+            self.acc_ff = rls_kernel.update(self.acc_ff, observation,
+                                            desired_output)
             # print("acc_ff:", self.acc_ff)
-        
+
         if info['current_target_gate_in_range']:
             true_gate_pose = info['current_target_gate_pos']
             current_gate_id = info['current_target_gate_id']
