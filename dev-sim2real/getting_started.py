@@ -165,8 +165,10 @@ def run(run_type, test=False):
 
         # Update the controller internal state and models.
         # ctrl.interStepLearn(action, obs, reward, done, info) # add args for interStepLearn
-        if command_type == mod.Command.FULLSTATE:
+        if command_type == mod.Command.FULLSTATE and run_type=="MP":
             ctrl.interStepLearn(args, action, obs, reward, done, info) # add args for interStepLearn
+        if run_type!="MP":
+            ctrl.interStepLearn(action, obs, reward, done, info)
 
         # Add up reward and collisions.
         cumulative_reward += reward
