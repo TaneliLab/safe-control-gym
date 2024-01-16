@@ -131,7 +131,6 @@ def run(run_type, test=False):
                 info = {}
                 first_ep_iteration = False
             command_type, args = ctrl.cmdFirmware(curr_time, vicon_obs, reward, done, info)
-
             # Select interface.
             if command_type == mod.Command.FULLSTATE:
                 firmware_wrapper.sendFullStateCmd(*args, curr_time)
@@ -165,7 +164,9 @@ def run(run_type, test=False):
             obs, reward, done, info = env.step(action)
 
         # Update the controller internal state and models.
-        ctrl.interStepLearn(action, obs, reward, done, info)
+        # ctrl.interStepLearn(action, obs, reward, done, info) # add args for interStepLearn
+        if command_type == mod.Command.FULLSTATE:
+            ctrl.interStepLearn(args, action, obs, reward, done, info) # add args for interStepLearn
 
         # Add up reward and collisions.
         cumulative_reward += reward
