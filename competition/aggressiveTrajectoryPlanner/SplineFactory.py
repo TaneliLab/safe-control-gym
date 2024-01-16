@@ -8,7 +8,7 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 
-INIT_FLIGHT_TIME = 7
+INIT_FLIGHT_TIME = 12
 class TrajectoryGenerator:
 
     def __init__(self, start: np.array, goal: np.array, gates, obstacles, sampleRate):

@@ -211,7 +211,7 @@ class Globalplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 1
+        threshold = 1 # penalty on control points smaller than threshold
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
@@ -606,7 +606,7 @@ if __name__ == "__main__":
 
     GOAL = [-0.5, 2.9, 0.75]
 
-    trajGen = TrajectoryGenerator(X0, GOAL, GATES, OBSTACLES)
+    trajGen = TrajectoryGenerator(X0, GOAL, GATES, OBSTACLES, 2)
     traj = trajGen.spline
 
     trajReplanar = Globalplanner(traj, X0, GOAL, GATES, OBSTACLES)
