@@ -141,13 +141,13 @@ class Controller():
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
         t_scaled = timesteps
-
+        w = 1.3
         # # ---------------testing with simple trajectories -------------
-        self.ref_x = np.sin(timesteps) + self.initial_obs[0]
-        self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
+        self.ref_x = np.sin(w*timesteps) + self.initial_obs[0]
+        self.ref_y = np.cos(w*timesteps) - 1 + self.initial_obs[2]
         # constant height
         # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
-        self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight 
+        self.ref_z = 0.2*np.sin(w*timesteps) + self.onflyHeight 
         
         self.ref_vx = np.diff(self.ref_x) * self.CTRL_FREQ
         self.ref_vx = np.insert(self.ref_vx, 0, 0)
@@ -337,7 +337,9 @@ class Controller():
         # elif iteration == (endpoint_freq + 12)*self.CTRL_FREQ-1:
         #     command_type = Command(-1)  # Terminate command to be sent once the trajectory is completed.
         #     args = []
-
+        elif self.completeFlag:
+            command_type = Command(-1)  # terminate.
+            args = []
         else:
             command_type = Command(0)  # None.
             args = []
