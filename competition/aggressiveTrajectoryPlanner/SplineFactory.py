@@ -8,10 +8,10 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 
-INIT_FLIGHT_TIME = 12
+# INIT_FLIGHT_TIME = 12
 class TrajectoryGenerator:
 
-    def __init__(self, start: np.array, goal: np.array, gates, obstacles, sampleRate):
+    def __init__(self, start: np.array, goal: np.array, gates, obstacles, sampleRate, flight_time_init):
         """Initialization of the class
 
         Args:
@@ -37,7 +37,7 @@ class TrajectoryGenerator:
         self.waypoints = self.setWaypoints()
 
         # Time duration of the spline in seconds
-        self.t = INIT_FLIGHT_TIME
+        self.t = flight_time_init
         self.init_t = self.t
 
         # B-Spline parametrizing the state-space of the trajectory
