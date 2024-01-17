@@ -117,11 +117,13 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-        self.LC_Module = True
+        self.gate_id_now = -99
+        self.LC_Module = False
         self.Planner_Type = "classical"
         self.Planner_Type = "replan"
         self.takeoffFlag = False
-        self.sampleRate = 4
+        self.sampleRate = 2
+        self.init_flight_time = 15
         self.completeFlag = False
         self.low2highlevelFlag = True
         # Call a function in module `example_custom_utils`.
@@ -140,9 +142,9 @@ class Controller():
 
         for idx, g in enumerate(self.NOMINAL_GATES):
             if g[6] == 0: #tall
-                waypoints.append((g[0], g[1], height_tall))
+                waypoints.append((g[0], g[1], initial_info["gate_dimensions"]["tall"]["height"] ))
             else:
-                waypoints.append((g[0], g[1], height_low))
+                waypoints.append((g[0], g[1], initial_info["gate_dimensions"]["low"]["height"]))
 
             # height = initial_info["gate_dimensions"]["tall"]["height"] if g[
             #     6] == 0 else initial_info["gate_dimensions"]["low"]["height"]
@@ -186,7 +188,7 @@ class Controller():
 
         elif self.Planner_Type == "replan":
             trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
-                                          waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate)
+                                          waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate, self.init_flight_time)
             traj = trajGen.spline  #init spline
 
             trajPlanner = Globalplanner(traj, waypoints[0], waypoints[-1],
@@ -515,9 +517,13 @@ class Controller():
             # TODO: Design Replan
             # Simpliest: Move gate control point to new center, and return the new spline
             # Return to self.p, self.v, self.a
-            if self.Planner_Type == "replan":
+            # and current_gate_id not in self.passed_gate_id
+            print("self.gate_id_now:", self.gate_id_now, "current_gate_id:", current_gate_id)
+            if self.Planner_Type == "replan" and self.gate_id_now!=current_gate_id:
                 trajLocalPlanner = LocalReplanner(self.trajectory, self.sampleRate, current_gate_id, true_gate_pose)
+                print("hard switch")
                 trajectory = trajLocalPlanner.hardGateSwitch()
+                self.gate_id_now = current_gate_id
                 if trajectory:
                     timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
