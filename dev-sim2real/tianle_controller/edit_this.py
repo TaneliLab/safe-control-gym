@@ -122,7 +122,7 @@ class Controller():
         self.Planner_Type = "classical"
         self.Planner_Type = "replan"
         self.takeoffFlag = False
-        self.sampleRate = 2
+        self.sampleRate = 4
         self.init_flight_time = 15
         self.completeFlag = False
         self.low2highlevelFlag = True
