@@ -281,18 +281,20 @@ def run(test=False):
         if done:
 
             # Compare real trajectory and reference trajectory
-            # TODO: Bestway? or plot by log function
             print("real fly trajectory length:", len(onfly_obs_x))
             print("length of ref trajectory:", len(onfly_ref_x))
             # plot_real_trajectory(ctrl.onfly_time, ctrl.onfly_ref_x, ctrl.onfly_ref_y, ctrl.onfly_ref_z, 
             #                      ctrl.onfly_obs_x, ctrl.onfly_obs_y, ctrl.onfly_obs_z,
             #                      ctrl.onfly_acc_z)
             
-            # # TODO: plot has problem when multiple episode
-            # plot_real_trajectory(onfly_time, onfly_ref_x, onfly_ref_y, onfly_ref_z, 
-            #             onfly_obs_x, onfly_obs_y, onfly_obs_z,
-            #             onfly_acc)
-            
+            # Fixed plot in multiple eposide
+            # TODO: Bestway? or plot by a log function
+            plot_real_trajectory(onfly_time, onfly_ref_x, onfly_ref_y, onfly_ref_z, 
+                        onfly_obs_x, onfly_obs_y, onfly_obs_z,
+                        onfly_acc)
+            onfly_time, onfly_obs_x, onfly_obs_y, onfly_obs_z = [], [], [], []
+            onfly_ref_x, onfly_ref_y, onfly_ref_z, onfly_acc = [], [], [], []
+
             # Plot logging (comment as desired).
             if not test:
                 logger.plot(comment="get_start-episode-"+str(episodes_count), autoclose=True)
