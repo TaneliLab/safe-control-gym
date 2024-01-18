@@ -9,16 +9,16 @@ import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 VERBOSE = False
-VERBOSE_PLOT = False
+VERBOSE_PLOT = True
 VMAX = 3
 AMAX = 6
 LAMBDA_T = 1
-LAMBDA_GATES = 100
+LAMBDA_GATES = 200
 LAMBDA_V = 100
 LAMBDA_ACC = 100
 LAMBDA_OBST = 0
 LAMBDA_TURN = 0
-LAMBDA_TURN_ANGLE = 1
+LAMBDA_TURN_ANGLE = 5
 
 try:    
     from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator

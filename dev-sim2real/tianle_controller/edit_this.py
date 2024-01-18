@@ -123,7 +123,7 @@ class Controller():
         self.Planner_Type = "replan"
         self.takeoffFlag = False
         self.sampleRate = 4
-        self.init_flight_time = 15
+        self.init_flight_time = 12
         self.completeFlag = False
         self.low2highlevelFlag = True
         # Call a function in module `example_custom_utils`.
