@@ -52,9 +52,13 @@ from aggressiveTrajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
 from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursiveLeastSquaresMultiDim
 
 # New SplineFactory and localReplanner
-from aggressiveTrajectoryPlanner.globalplanner import Globalplanner
-from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
-from aggressiveTrajectoryPlanner.localReplanner import LocalReplanner
+# from aggressiveTrajectoryPlanner.globalplanner import Globalplanner
+# from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
+# from aggressiveTrajectoryPlanner.localReplanner import LocalReplanner
+
+from flexibleTrajectoryPlanner.globalplanner import Globalplanner
+from flexibleTrajectoryPlanner.SplineFactory import TrajectoryGenerator
+from flexibleTrajectoryPlanner.localReplanner import LocalReplanner
 #########################
 # REPLACE THIS (END) ####
 #########################
@@ -122,8 +126,8 @@ class Controller():
         self.Planner_Type = "classical"
         self.Planner_Type = "replan"
         self.takeoffFlag = False
-        self.sampleRate = 3
-        self.init_flight_time = 15
+        self.sampleRate = 4
+        self.init_flight_time = 12
         self.completeFlag = False
         self.low2highlevelFlag = True
         # Call a function in module `example_custom_utils`.
@@ -187,17 +191,21 @@ class Controller():
             omegaTrajectory = trajPlanner.omega_spline
 
         elif self.Planner_Type == "replan":
-            trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
-                                          waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate, self.init_flight_time)
-            traj = trajGen.spline  #init spline
+            # trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
+            #                               waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate, self.init_flight_time)
+            
+            # Better way of Generator
+            trajGen = TrajectoryGenerator(initial_obs, initial_info, self.sampleRate, self.init_flight_time)
+            self.traj_waypoints = trajGen.waypoints
 
-            trajPlanner = Globalplanner(traj, waypoints[0], waypoints[-1],
-                                        waypoints2, self.NOMINAL_OBSTACLES)
+            trajectory = trajGen.spline  #init spline
+
+            trajPlanner = Globalplanner(trajectory, initial_obs, initial_info, self.sampleRate)
             trajPlanner.optimizer()
             trajectory = trajPlanner.spline
 
         self.trajectory = copy.copy(trajectory)
-        duration = trajPlanner.t
+        # duration = trajPlanner.t
 
         self.flight_duration = 15  # for test
         self.takeOffTime = 1
@@ -210,6 +218,7 @@ class Controller():
         # timesteps = np.concatenate((takeoff_timesteps, onfly_timesteps))
 
         self.flight_duration = trajPlanner.t  # flight duration
+        # self.flight_duration = trajGen.t  # flight duration
         print("flight time plan:", self.flight_duration)
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
@@ -248,11 +257,11 @@ class Controller():
 
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
-            plot_trajectory(t_scaled, self.waypoints, self.ref_x, self.ref_y,
+            plot_trajectory(t_scaled, self.traj_waypoints, self.ref_x, self.ref_y,
                             self.ref_z)
 
             # Draw the trajectory on PyBullet's GUI.
-            draw_trajectory(initial_info, self.waypoints, self.ref_x,
+            draw_trajectory(initial_info, self.traj_waypoints, self.ref_x,
                             self.ref_y, self.ref_z)
 
         #########################
@@ -483,6 +492,7 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
+        """
         if self.interstep_counter > 1:
             # TODO: extend to 3dim
             # rls_kernel = KernelRecursiveLeastSquares(num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
@@ -530,7 +540,7 @@ class Controller():
                     self.p = trajectory(timesteps)
                     self.v = trajectory.derivative(1)(timesteps)
                     self.a = trajectory.derivative(2)(timesteps)
-        
+        """
         #########################
         # REPLACE THIS (END) ####
         #########################
