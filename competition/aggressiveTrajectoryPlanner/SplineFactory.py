@@ -100,7 +100,7 @@ class TrajectoryGenerator:
         bc_r = [(1, np.zeros((3, ))), (2, np.zeros((3, )))]
 
         bc = (bc_0, bc_r)
-
+        #1
         # Interpolation of the B-spline based on scipy rules
         self.spline = interpol.make_interp_spline(knots,
                                                   self.waypoints,
