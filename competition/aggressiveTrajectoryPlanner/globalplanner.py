@@ -18,7 +18,7 @@ LAMBDA_V = 100
 LAMBDA_ACC = 100
 LAMBDA_OBST = 0
 LAMBDA_TURN = 0
-LAMBDA_TURN_ANGLE = 5
+LAMBDA_TURN_ANGLE = 0
 
 try:    
     from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
@@ -548,14 +548,24 @@ class Globalplanner:
         p = self.opt_spline(time)
         p_init = self.init_spline(init_time)
 
+        coeffs = self.opt_spline.c
+        x_coeffs = coeffs[:, 0]
+        y_coeffs = coeffs[:, 1]
+        z_coeffs = coeffs[:, 2]
+        print("t:", self.opt_spline.t)
+        print("pos:", x_coeffs)
+        
         axs[0].plot(time, p.T[0], label='opt_x')
         axs[0].plot(init_time, p_init.T[0], label='init_x')
+        axs[0].scatter(self.opt_spline.t[3:-3], x_coeffs, label='control_x')
         axs[0].legend()
         axs[1].plot(time, p.T[1], label='opt_y')
         axs[1].plot(init_time, p_init.T[1], label='init_y')
+        axs[1].scatter(self.opt_spline.t[3:-3], y_coeffs, label='control_y')
         axs[1].legend()
         axs[2].plot(time, p.T[2], label='opt_z')
         axs[2].plot(init_time, p_init.T[2], label='init_z')
+        axs[2].scatter(self.opt_spline.t[3:-3], z_coeffs, label='control_z')
         axs[2].legend()
         plt.show()
 

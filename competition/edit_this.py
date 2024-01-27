@@ -124,6 +124,7 @@ class Controller():
         self.sampleRate = 2
         self.completeFlag = False
         self.low2highlevelFlag = True
+        self.init_flight_time = 12
         # Call a function in module `example_custom_utils`.
         ecu.exampleFunction()
 
@@ -139,27 +140,14 @@ class Controller():
         for idx, g in enumerate(self.NOMINAL_GATES):
             height = initial_info["gate_dimensions"]["tall"]["height"] if g[
                 6] == 0 else initial_info["gate_dimensions"]["low"]["height"]
-            if g[5] > 0.75 or g[5] < 0:
-                if idx == 2:  # Hardcoded scenario knowledge (direction in which to take gate 2).
-
-                    waypoints.append((g[0], g[1], height))
-                else:
-
-                    waypoints.append((g[0], g[1], height))
-            else:
-                if idx == 3:  # Hardcoded scenario knowledge (correct how to take gate 3).
-
-                    waypoints.append((g[0], g[1], height))
-                else:
-
-                    waypoints.append((g[0], g[1], height))
+            waypoints.append((g[0], g[1], height))
 
         waypoints.append([
             initial_info["x_reference"][0], initial_info["x_reference"][2],
             initial_info["x_reference"][4]
         ])
 
-        waypoints2 = waypoints[1:-1]
+        waypoints2 = waypoints[1:-1] # only keep gate waypoints
 
         waypoints2 = np.array(waypoints2)
 
@@ -180,7 +168,7 @@ class Controller():
 
         elif self.Planner_Type == "replan":
             trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
-                                          waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate)
+                                          waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate, self.init_flight_time)
             traj = trajGen.spline  #init spline
 
             trajPlanner = Globalplanner(traj, waypoints[0], waypoints[-1],

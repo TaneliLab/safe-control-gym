@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # INIT_FLIGHT_TIME = 12
 class TrajectoryGenerator:
 
-    def __init__(self, start: np.array, goal: np.array, gates, obstacles, sampleRate, flight_time_init):
+    def __init__(self, initial_obs, initial_info, sampleRate, flight_time_init):
         """Initialization of the class
 
         Args:
@@ -20,18 +20,26 @@ class TrajectoryGenerator:
             gates (list or array): container of gates postions and orientations
             obstacles (list or array): container of positions
         """
+        self.initial_obs = initial_obs
+        self.initial_info = initial_info
+        HEIGHT_TALL_GATE = initial_info["gate_dimensions"]["tall"]["height"]
+        HEIGHT_LOW_GATE = initial_info["gate_dimensions"]["low"]["height"]
+        self.NOMINAL_GATES = initial_info["nominal_gates_pos_and_type"]
+        self.NOMINAL_OBSTACLES = initial_info["nominal_obstacles_pos"]
 
         # Starting position
-        self.start = start
+        self.start = (initial_obs[0], initial_obs[2],
+                          HEIGHT_TALL_GATE)
 
         # End position
-        self.goal = goal
+        self.goal = (initial_info["x_reference"][0], initial_info["x_reference"][2],
+            initial_info["x_reference"][4])
 
         # Gates position
         # TODO: fix because we need to find center point
         # Method: Include more control points
 
-        self.gates = gates
+        # self.gates = gates
 
         # Waypoints of the trajectory
         self.waypoints = self.setWaypoints()
@@ -57,16 +65,13 @@ class TrajectoryGenerator:
 
         ways = []
         ways.append(self.start)
-        for g in self.gates:
-            # ways.append(g[0:3])   
-            # z_head = g[5]
-            # safe_dis = 0.1
-            # delta_x = safe_dis*np.sin(z_head)
-            # delta_y = safe_dis*np.cos(z_head)
-            # ways.append([g[0] + delta_x, g[1] - delta_y, g[2]])
-            ways.append([g[0], g[1], g[2]])
-            # ways.append([g[0] - delta_x, g[1] + delta_y, g[2]])
+        for idx, g in enumerate(self.NOMINAL_GATES):
+            height = self.initial_info["gate_dimensions"]["tall"]["height"] if g[6] == 0 else self.initial_info["gate_dimensions"]["low"]["height"]
+            # delta_p = [-0.2*np.sin(g[5]), 0.2*np.cos(g[5])]
 
+            # ways.append((g[0]-delta_p[0], g[1]-delta_p[1], height))
+            # ways.append((g[0]+delta_p[0], g[1]+delta_p[1], height))
+            ways.append((g[0], g[1], height))
 
         ways.append(self.goal)
         return np.array(ways)
@@ -101,8 +106,11 @@ class TrajectoryGenerator:
                                                   self.waypoints,
                                                   k=self.degree,
                                                   bc_type=bc)
-
+        print("spline pos:",type(self.spline.c))
+        print("spline velo:",self.spline.derivative(1).c)
+        print("knot: ", self.spline.t)
         # Interpolation of the same B-spline with more control points
+
         self.n = self.n * self.sampleRate
         keytimesteps = np.linspace(0, self.t, self.n)
         self.controlPoints = self.spline(keytimesteps)
