@@ -56,6 +56,7 @@ from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursi
 # from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
 # from aggressiveTrajectoryPlanner.localReplanner import LocalReplanner
 
+# flexible in control points, cost design updated
 from flexibleTrajectoryPlanner.globalplanner import Globalplanner
 from flexibleTrajectoryPlanner.SplineFactory import TrajectoryGenerator
 from flexibleTrajectoryPlanner.localReplanner import LocalReplanner
