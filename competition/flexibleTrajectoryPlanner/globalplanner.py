@@ -9,32 +9,35 @@ import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 VERBOSE = False
-VERBOSE_PLOT = True
+VERBOSE_PLOT = False
 VMAX = 6
 AMAX = 6
 LAMBDA_T = 5
-LAMBDA_GATES = 500
+LAMBDA_GATES = 2000
 LAMBDA_V = 100
-LAMBDA_ACC = 100
+LAMBDA_ACC = 200
 LAMBDA_OBST = 500
 # LAMBDA_TURN = 0
 # LAMBDA_TURN_ANGLE = 0
-LAMBDA_HEADING = 1
+LAMBDA_HEADING = 20
 
 # Gates properties: {'tall': {'shape': 'square', 'height': 1.0, 'edge': 0.45}, 'low': {'shape': 'square', 'height': 0.525, 'edge': 0.45}}
 # Obstacles properties: {'shape': 'cylinder', 'height': 1.05, 'radius': 0.05}
-try:    
+try:
     from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
-except ImportError: 
+except ImportError:
     from SplineFactory import TrajectoryGenerator
+
 
 class Globalplanner:
 
     def __init__(self, spline, initial_obs, initial_info, sampleRate):
-        
+
         self.sampleRate = sampleRate
-        self.obstacle_height = initial_info['obstacle_dimensions']["height"]   #  height 1.05
-        self.obstacle_radius = initial_info['obstacle_dimensions']["radius"]   # radius 0.05
+        self.obstacle_height = initial_info['obstacle_dimensions'][
+            "height"]  #  height 1.05
+        self.obstacle_radius = initial_info['obstacle_dimensions'][
+            "radius"]  # radius 0.05
         self.init_spline = copy.copy(spline)
         self.spline = copy.copy(spline)
         self.coeffs0 = self.init_spline.c
@@ -50,7 +53,6 @@ class Globalplanner:
         self.time_coeffs = [0 for i in range(len(self.deltaT))]
         # self.x = np.append(self.coeffs0.flatten(), self.deltaT)
         self.x = np.append(self.coeffs0.flatten(), self.time_coeffs)
-        
 
         self.x_init = self.x
         self.len_control_coeffs = len(self.coeffs0.flatten())
@@ -67,13 +69,12 @@ class Globalplanner:
         self.NOMINAL_GATES = initial_info["nominal_gates_pos_and_type"]
         self.NOMINAL_OBSTACLES = initial_info["nominal_obstacles_pos"]
 
-        self.start = (initial_obs[0], initial_obs[2],
-                          HEIGHT_TALL_GATE)
-        self.goal = (initial_info["x_reference"][0], initial_info["x_reference"][2],
-            initial_info["x_reference"][4])
-        
+        self.start = (initial_obs[0], initial_obs[2], HEIGHT_TALL_GATE)
+        self.goal = (initial_info["x_reference"][0],
+                     initial_info["x_reference"][2],
+                     initial_info["x_reference"][4])
 
-        self.waypoints = self.setWaypoints()
+        self.waypoints = self.setWaypoints()  # contain start goal
         self.tv = len(self.waypoints)
         # Obstacle positions
         # self.obstacles = np.array(obstacles)
@@ -134,7 +135,9 @@ class Globalplanner:
         ways = []
         ways.append(self.start)
         for g in self.NOMINAL_GATES:
-            height = self.initial_info["gate_dimensions"]["tall"]["height"] if g[6] == 0 else self.initial_info["gate_dimensions"]["low"]["height"]  
+            height = self.initial_info["gate_dimensions"]["tall"][
+                "height"] if g[6] == 0 else self.initial_info[
+                    "gate_dimensions"]["low"]["height"]
             ways.append([g[0], g[1], height])
 
         ways.append(self.goal)
@@ -143,11 +146,12 @@ class Globalplanner:
     def validate(self):
         valid_coeffs_mask = []
         valid_coeffs_index = []
-        option = self.valid_mask 
+        option = self.valid_mask
         # allow all coeffs except start and goal coeffs
         # To exclude the start(first 9 instead of 3) and goal coeffs
         if option == "ALL":
-            for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
+            for index in range(self.len_control_coeffs +
+                               self.len_deltatT_coeffs):
                 if (index >= 9 and index < self.len_control_coeffs -
                         9) or index >= self.len_control_coeffs:
                     valid_coeffs_mask.append(1)
@@ -155,17 +159,19 @@ class Globalplanner:
                 else:
                     valid_coeffs_mask.append(0)
 
-        # only allow time coeffs 
-        elif option =="ONLYTIME":
-            for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
+        # only allow time coeffs
+        elif option == "ONLYTIME":
+            for index in range(self.len_control_coeffs +
+                               self.len_deltatT_coeffs):
                 if index >= self.len_control_coeffs:
                     valid_coeffs_mask.append(1)
                     valid_coeffs_index.append(index)
                 else:
                     valid_coeffs_mask.append(0)
 
-        elif option =="ONLYPOS":
-            for index in range(self.len_control_coeffs + self.len_deltatT_coeffs):
+        elif option == "ONLYPOS":
+            for index in range(self.len_control_coeffs +
+                               self.len_deltatT_coeffs):
                 if index >= 9 and index < self.len_control_coeffs - 9:
                     valid_coeffs_mask.append(1)
                     valid_coeffs_index.append(index)
@@ -175,17 +181,19 @@ class Globalplanner:
         # can add more
         return valid_coeffs_mask
 
-    def unpackX2deltaT(self,x):
+    def unpackX2deltaT(self, x):
         coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         time_coeffs = x[self.len_control_coeffs:]
         # map to 0.8~1.2
-        time_scaling = list(map(lambda x: 0.4/(1+np.exp(-x)) + 0.8, time_coeffs))
+        time_scaling = list(
+            map(lambda x: 0.4 / (1 + np.exp(-x)) + 0.8, time_coeffs))
         # map to 0.7~1.3
-        time_scaling = list(map(lambda x: 0.6/(1+np.exp(-x)) + 0.7, time_coeffs))
+        time_scaling = list(
+            map(lambda x: 0.6 / (1 + np.exp(-x)) + 0.7, time_coeffs))
         deltaT = self.deltaT0.copy()
         for i in range(len(deltaT)):
             deltaT[i] *= time_scaling[i]
-        return coeffs, deltaT  
+        return coeffs, deltaT
 
     def gatesCost(self, x, spline):
         """Cost value that pushes the spline towards the waypoints in the middle of the gates
@@ -206,7 +214,7 @@ class Globalplanner:
         knots = self.deltaT2knot(deltaT)
 
         key_knot = knots[5:-5]
-        positions = spline(key_knot) # positions of control points
+        positions = spline(key_knot)  # positions of control points
         # print("c:",spline.c)
 
         # Iterate through waypoints
@@ -218,9 +226,9 @@ class Globalplanner:
         if VERBOSE:
             print("Gates cost: ", cost)
         return cost
-    
+
     def gatesCost_strict(self, x, spline):
-        
+
         cost = 0
         coeffs, deltaT = self.unpackX2deltaT(x)
         knots = self.deltaT2knot(deltaT)
@@ -229,12 +237,13 @@ class Globalplanner:
         # print("t_T_gate:", t_T)
         dense_knot = np.linspace(0, t_T, 100)
         positions = spline(dense_knot)
-        # Iterate through waypoints
 
-        for w in self.waypoints:
+        # Iterate through waypoints
+        for idx, w in enumerate(self.waypoints[1:-1]):
             # Compute the distance between the waypoint and the positions
             delta = np.linalg.norm(positions - w, axis=1)
             # Select the closest waypoint and penalize the distance
+            # print(idx, ", ", np.min(delta))
             cost += np.min(delta)**2
 
         return cost
@@ -245,33 +254,39 @@ class Globalplanner:
         coeffs, deltaT = self.unpackX2deltaT(x)
         knots = self.deltaT2knot(deltaT)
         key_knot = knots[5:-5]
+
+        # only keep knot of the gate control points
         gate_knot = key_knot[self.sampleRate:-1:self.sampleRate]
-        
+
         #  print("heading Cost key_knot:", key_knot)
-        positions = spline(gate_knot) # positions of control points
+        positions = spline(gate_knot)  # positions of control points
 
         for idx, g in enumerate(self.NOMINAL_GATES):
-            dt = 0.2
-            height = self.initial_info["gate_dimensions"]["tall"]["height"] if g[6] == 0 else self.initial_info["gate_dimensions"]["low"]["height"]
-            
-            before_gate_pos = spline(gate_knot[idx]-dt) # :np.array
-            after_gate_pos = spline(gate_knot[idx]+dt)
+            dt = 0.3
+            height = self.initial_info["gate_dimensions"]["tall"][
+                "height"] if g[6] == 0 else self.initial_info[
+                    "gate_dimensions"]["low"]["height"]
+
+            # idx match to gate knot so we know position to gate
+            before_gate_pos = spline(gate_knot[idx] - dt)  # :np.array
+            after_gate_pos = spline(gate_knot[idx] + dt)
             d = after_gate_pos - before_gate_pos
 
             P0 = np.array([g[0], g[1], height])
             N = np.array([-np.sin(g[5]), np.cos(g[5]), 0])
             inter = np.dot(N, P0 - before_gate_pos) / np.dot(N, d)
 
-            intersection = before_gate_pos + inter*d
+            intersection = before_gate_pos + inter * d
 
-            heading_angle_rad = np.arccos(np.dot(d, N) / (np.linalg.norm(d) * np.linalg.norm(N)))
+            heading_angle_rad = np.arccos(
+                np.dot(d, N) / (np.linalg.norm(d) * np.linalg.norm(N)))
             heading_angle_deg = abs(np.degrees(heading_angle_rad))
             # print("heading_angle_deg:", heading_angle_deg)
             # print("intersection:", intersection)
             # print("P0:", P0)
             # print("distance:", np.linalg.norm(intersection - P0, axis=0))
             # compute distance from intersection point to gate center
-            distance = np.linalg.norm(intersection - P0, axis=0)**2 
+            distance = np.linalg.norm(intersection - P0, axis=0)**2
 
             cost += heading_angle_deg
 
@@ -287,7 +302,7 @@ class Globalplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 1 # penalty on control points smaller than threshold
+        threshold = 1  # penalty on control points smaller than threshold
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
@@ -312,7 +327,7 @@ class Globalplanner:
         if VERBOSE:
             print("obstacle cost: ", cost)
         return cost
-    
+
     def obstacleCost_strict(self, x, spline):
         """Penalty for trajectories that are close to obstacles
 
@@ -323,7 +338,7 @@ class Globalplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 0.25 # penalty on spline points smaller than threshold
+        threshold = 0.25  # penalty on spline points smaller than threshold
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
@@ -339,19 +354,25 @@ class Globalplanner:
         for obst in self.NOMINAL_OBSTACLES:
             # print("positions[3]:", positions[:, 2])
             # print("positions[:2]:", positions[:, :2])
-            obst_pos = [obst[0], obst[1], self.initial_info['obstacle_dimensions']["height"]]
+            obst_pos = [
+                obst[0], obst[1],
+                self.initial_info['obstacle_dimensions']["height"]
+            ]
 
             # Compute distance between obstacle position and control point
             dist = positions[:, :2] - obst_pos[:2]
             # Norm of the distance
             dist = np.linalg.norm(dist, axis=1)
-            
-            delta_height = positions[:, 2] - obst_pos[2] # how much higher than obstacle
+
+            delta_height = positions[:, 2] - obst_pos[
+                2]  # how much higher than obstacle
             # print("delta_height：", delta_height)
             # Select the ones below the threshold(dangerous)
-            mask_dist_unsafe = dist < threshold 
+            mask_dist_unsafe = dist < threshold
             mask_height_unsafe = delta_height < 0.05
-            mask = [a and b for a, b in zip(mask_dist_unsafe, mask_height_unsafe)]
+            mask = [
+                a and b for a, b in zip(mask_dist_unsafe, mask_height_unsafe)
+            ]
             breached = dist[mask]
             # print("breached:", breached)
             # Cost as the difference between the threshold values and the summed breach of constraint
@@ -360,7 +381,7 @@ class Globalplanner:
         if VERBOSE:
             print("obstacle cost: ", cost)
         return cost
-    
+
     def TurningCost_OnlyAngle(self, x, spline):
         cost = 0
         # Get coeffs
@@ -387,7 +408,7 @@ class Globalplanner:
             angle_in_rads = np.arccos(cosine_12)
             # print(angle_in_rads)
             # print(np.degrees(angle_in_rads))
-            cost += angle_in_rads 
+            cost += angle_in_rads
 
         if VERBOSE:
             print("Turning cost only angle: ", cost)
@@ -457,7 +478,7 @@ class Globalplanner:
 
         # COmpute the squared norms
         norms = np.square(np.linalg.norm(vals, axis=1))
-        
+
         # Obtain the ones which exceed the limit
         mask = norms > self.vmax**2
 
@@ -477,7 +498,7 @@ class Globalplanner:
         knots = self.deltaT2knot(deltaT)
         key_knot = knots[5:-5]
         t_T = key_knot[-1]
-        
+
         dense_knot = np.linspace(0, t_T, 100)
 
         val_spline = spline.derivative(1)
@@ -497,9 +518,6 @@ class Globalplanner:
 
         return cost
 
-
-        
-
         return cost
 
     def accelerationLimitCost(self, x, spline):
@@ -518,13 +536,13 @@ class Globalplanner:
         vals = spline.derivative(2).c
 
         # COmpute the squared norms
-        norms = np.square(np.linalg.norm(vals, axis=1))
+        # norms = np.square(np.linalg.norm(vals, axis=1))
         norms = np.linalg.norm(vals, axis=1)
         # Obtain the ones which exceed the limit
-        mask = norms > self.amax**2
+        # mask = norms > self.amax**2
         mask = norms > self.amax
         # Get cost
-        cost = np.sum(norms[mask] - self.amax**2)**2
+        # cost = np.sum(norms[mask] - self.amax**2)**2
         cost = np.sum(norms[mask] - self.amax)**2
         if VERBOSE:
 
@@ -547,7 +565,7 @@ class Globalplanner:
         # # update the deltaT everytime getCost from objective and jacobian
         # deltaT = x[self.len_control_coeffs:]
         coeffs, deltaT = self.unpackX2deltaT(x)
-        
+
         knots = self.deltaT2knot(deltaT)
         # update spline for cost
         spline = interpol.BSpline(knots, coeffs, self.degree)
@@ -556,34 +574,31 @@ class Globalplanner:
 
         #TODO:Make it flexible to choose cost by control LAMBDA
 
-        # Constraint Cost 
-        
-        cost += LAMBDA_GATES*self.gatesCost_strict(x, spline)
-        cost += LAMBDA_V*self.velocityLimitCost(x,spline)
+        # Constraint Cost
+
+        cost += LAMBDA_GATES * self.gatesCost_strict(x, spline)
+        cost += LAMBDA_V * self.velocityLimitCost(x, spline)
         # cost += LAMBDA_V*self.velocityLimitCost_strict(x,spline)
-        cost += LAMBDA_ACC*self.accelerationLimitCost(x,spline)
-        cost += LAMBDA_OBST*self.obstacleCost_strict(x,spline)
-        cost += LAMBDA_HEADING*self.headingCost(x,spline)
+        cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
+        cost += LAMBDA_OBST * self.obstacleCost_strict(x, spline)
+        cost += LAMBDA_HEADING * self.headingCost(x, spline)
 
         # Performance Cost
-        cost += LAMBDA_T*self.TimeCost(x,spline)
+        cost += LAMBDA_T * self.TimeCost(x, spline)
 
         # cost += LAMBDA_GATES*self.gatesCost(x, spline)
         # cost += LAMBDA_OBST*self.obstacleCost(x,spline)
         # cost += LAMBDA_TURN * self.TurningCost(x, spline)
         # cost += LAMBDA_TURN_ANGLE * self.TurningCost_OnlyAngle(x, spline)
-        
-        
 
         return cost
-    
 
     def numeric_jacobian(self, x):
         # x 0:self.n-self.tv control points,  self.n-self.tv: time
         dt = 0.01
         lr = 0.01
         jacobian = []
-        
+
         for i in range(x.shape[0]):
             if i < self.len_control_coeffs:
                 # self.len_control_coeffs = 30
@@ -611,7 +626,7 @@ class Globalplanner:
         return jacobian
 
     def bounds(self):
-        
+
         # print(self.waypoints)
         # print(self.coeffs0)
         # print(self.time_coeffs)
@@ -632,8 +647,10 @@ class Globalplanner:
         lower_bound_time_sigmoid = np.array([-100] * n_time)
         upper_bound_time_sigmoid = np.array([100] * n_time)
 
-        lower_bounds = np.concatenate([lower_bounds_pos, lower_bound_time_sigmoid])
-        upper_bounds = np.concatenate([upper_bounds_pos, upper_bound_time_sigmoid])
+        lower_bounds = np.concatenate(
+            [lower_bounds_pos, lower_bound_time_sigmoid])
+        upper_bounds = np.concatenate(
+            [upper_bounds_pos, upper_bound_time_sigmoid])
         bounds = opt.Bounds(lower_bounds, upper_bounds)
         return bounds
 
@@ -641,15 +658,16 @@ class Globalplanner:
 
         #####################Pos Optimize Start#############################
         ###################################################################
-        # optimize over control points 
+        # optimize over control points
         self.valid_mask = "ONLYPOS"
         self.valid_coeffs_mask = self.validate()
-        res = opt.minimize(self.objective,
-                           self.x,
-                        #    method='SLSQP', # try different method
-                           method='SLSQP',
-                           jac=self.numeric_jacobian,
-                           tol=1e-10)
+        res = opt.minimize(
+            self.objective,
+            self.x,
+            #    method='SLSQP', # try different method
+            method='SLSQP',
+            jac=self.numeric_jacobian,
+            tol=1e-10)
 
         # self.x = res.x
         x = res.x
@@ -660,30 +678,30 @@ class Globalplanner:
         self.t = knots_opt[-1]
         vals = self.opt_spline.derivative(1).c
         acc = self.opt_spline.derivative(2).c
-        print("spline_velo:",np.linalg.norm(vals, axis=1) )
-        print("spline_acc:",np.linalg.norm(acc, axis=1) )
+        print("spline_velo:", np.linalg.norm(vals, axis=1))
+        print("spline_acc:", np.linalg.norm(acc, axis=1))
 
         if VERBOSE_PLOT:
             self.plot_xyz()
             self.plot()
         #####################Pos Optimize End#############################
         ###################################################################
-        
 
         #####################Time Optimize Start#############################
         ###################################################################
-            
+
         # optimize over time
         self.valid_mask = "ONLYTIME"
         self.valid_coeffs_mask = self.validate()
 
         # Thinking of regularization
-        res = opt.minimize(self.objective,
-                           self.x,
-                           # method='trust-constr', # try different method
-                           method='SLSQP',
-                           jac=self.numeric_jacobian,
-                           tol=1e-10)
+        res = opt.minimize(
+            self.objective,
+            self.x,
+            # method='trust-constr', # try different method
+            method='SLSQP',
+            jac=self.numeric_jacobian,
+            tol=1e-10)
         self.x = res.x
         x = self.x
         # separate control points and knots
@@ -702,29 +720,26 @@ class Globalplanner:
         if VERBOSE_PLOT:
             self.plot_xyz()
             self.plot()
-            
+
         #####################Time Optimize End#############################
         ###################################################################
 
-
         vals = self.opt_spline.derivative(1).c
         acc = self.opt_spline.derivative(2).c
-        
-        print("spline_velo:",np.linalg.norm(vals, axis=1) )
-        print("spline_acc:",np.linalg.norm(acc, axis=1) )
+
+        print("spline_velo:", np.linalg.norm(vals, axis=1))
+        print("spline_acc:", np.linalg.norm(acc, axis=1))
         print("knots_opt:", knots_opt)
         print("init_coeffs:", self.coeffs0)
         print("final_coeffs:", coeffs_opt)
         print("deltaT0:", self.deltaT0)
         print("deltaT_final:", self.deltaT)
         # copy optimized results
-        
+
         self.t = knots_opt[-1]
         self.knots = knots_opt
         self.coeffs = coeffs_opt
         self.spline = self.opt_spline
-        
-
 
     def plot_xyz(self):
         """Plot the xyz trajectory
@@ -746,7 +761,7 @@ class Globalplanner:
         z_coeffs = coeffs[:, 2]
         print("t:", self.opt_spline.t)
         print("pos:", x_coeffs)
-        
+
         axs[0].plot(time, p.T[0], label='opt_x')
         axs[0].plot(init_time, p_init.T[0], label='init_x')
         axs[0].scatter(self.opt_spline.t[3:-3], x_coeffs, label='control_x')
@@ -781,10 +796,7 @@ class Globalplanner:
         ax.plot(p_init.T[0], p_init.T[1], p_init.T[2], label='Init_Traj')
         ax.plot(p.T[0], p.T[1], p.T[2], label='Opt_Traj')
 
-        ax.plot(coeffs[:, 0],
-                coeffs[:, 1],
-                coeffs[:, 2],
-                '*', label='control')
+        ax.plot(coeffs[:, 0], coeffs[:, 1], coeffs[:, 2], '*', label='control')
 
         ax.plot(self.waypoints.T[0],
                 self.waypoints.T[1],
@@ -804,18 +816,18 @@ if __name__ == "__main__":
     # # real GATES:
     # GATES = [[0.47, -0.99, 0.52], [-0.5, 0.03, 1.14], [-0.5, 1.02, 0.57],
     #          [0.52, 2.11, 1.15]]
-    
+
     GATES = [[0.47, -0.99, 0.52, 0, 0, 0.8, 1],
       [-0.5, 0.03, 1.14, 0, 0, 0, 0],
       [-0.5, 1.02, 0.57, 0, 0, 0, 1],
       [0.52, 2.11, 1.15, 0, 0, 0, 0]
     ]
-    # 
+    #
     OBSTACLES = [[1.5, -2.5, 0, 0, 0, 0], [0.5, -1, 0, 0, 0, 0],
-                 [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0], 
+                 [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0],
                  [2, -1.4, 0, 0, 0, 0], [1.8, -1.4, 0, 0, 0, 0],  # extra
                  [2.3, -1.4, 0, 0, 0, 0], [0, 0.23, 0, 0, 0, 0]]  # extra
-    
+
     # OBSTACLES = [[1.5, -2.5, 0, 0, 0, 0], [0.5, -1, 0, 0, 0, 0],
     #              [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0]]
     # OBSTACLES = []

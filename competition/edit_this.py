@@ -28,6 +28,7 @@ import numpy as np
 import copy
 from collections import deque
 
+
 try:
     from competition_utils import Command, PIDController, timing_step, timing_ep, plot_trajectory, draw_trajectory
 except ImportError:
@@ -147,7 +148,7 @@ class Controller():
             initial_info["x_reference"][4]
         ])
 
-        waypoints2 = waypoints[1:-1] # only keep gate waypoints
+        waypoints2 = waypoints[1:-1]  # only keep gate waypoints
 
         waypoints2 = np.array(waypoints2)
 
@@ -155,7 +156,7 @@ class Controller():
         # Polynomial fit.
         self.waypoints = np.array(waypoints)
         deg = 6
-        
+
         # TOM Version
         if self.Planner_Type == "classic":
             trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
@@ -168,7 +169,9 @@ class Controller():
 
         elif self.Planner_Type == "replan":
             trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
-                                          waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate, self.init_flight_time)
+                                          waypoints2, self.NOMINAL_OBSTACLES,
+                                          self.sampleRate,
+                                          self.init_flight_time)
             traj = trajGen.spline  #init spline
 
             trajPlanner = Globalplanner(traj, waypoints[0], waypoints[-1],
@@ -259,6 +262,7 @@ class Controller():
             List: arguments for the type of command (see comments in class `Command`)
 
         """
+
         if self.ctrl is not None:
             raise RuntimeError(
                 "[ERROR] Using method 'cmdFirmware' but Controller was created with 'use_firmware' = False."
@@ -313,7 +317,7 @@ class Controller():
             # LC compensate
             if self.LC_Module:
                 print("LC module is activated")
-                # Fx and Fy noise always tricky 
+                # Fx and Fy noise always tricky
                 # TODO: solve this and uncomment
                 # target_acc[0] = self.acc_ff[0]
                 # target_acc[1] = self.acc_ff[1]
@@ -338,7 +342,7 @@ class Controller():
                 self.completeFlag = True
 
         # (Optional) Design for making it return after reach the goal
-                
+
         # elif iteration >= endpoint_freq * self.CTRL_FREQ and iteration<endpoint_freq*self.CTRL_FREQ +5 and self.low2highlevelFlag:
         #     print("iteration: ", iteration)
         #     print("setpoint stop")
@@ -497,16 +501,21 @@ class Controller():
             # TODO: Design Replan
             # Simpliest: Move gate control point to new center, and return the new spline
             # Return to self.p, self.v, self.a
+
             if self.Planner_Type == "replan":
-                trajLocalPlanner = LocalReplanner(self.trajectory, self.sampleRate, current_gate_id, true_gate_pose)
+                trajLocalPlanner = LocalReplanner(self.trajectory,
+                                                  self.sampleRate,
+                                                  current_gate_id,
+                                                  true_gate_pose)
                 trajectory = trajLocalPlanner.hardGateSwitch()
                 if trajectory:
-                    timesteps = np.linspace(0, self.flight_duration,
-                                int(self.flight_duration * self.CTRL_FREQ))
+                    timesteps = np.linspace(
+                        0, self.flight_duration,
+                        int(self.flight_duration * self.CTRL_FREQ))
                     self.p = trajectory(timesteps)
                     self.v = trajectory.derivative(1)(timesteps)
                     self.a = trajectory.derivative(2)(timesteps)
-        
+
         #########################
         # REPLACE THIS (END) ####
         #########################

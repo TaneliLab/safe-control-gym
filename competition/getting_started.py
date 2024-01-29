@@ -174,48 +174,56 @@ def run(test=False):
                                            parentLinkIndex=-1,
                                            replaceItemUniqueId=time_label_id,
                                            physicsClientId=env.PYB_CLIENT)
+        # Skip some iteration
+        if(i % 3 ==0):
+            # Compute control input.
+            if config.use_firmware:
+                vicon_obs = [obs[0], 0, obs[2], 0, obs[4], 0, obs[6], obs[7], obs[8], 0, 0, 0]
+                    # obs = {x, x_dot, y, y_dot, z, z_dot, phi, theta, psi, p, q, r}.
+                    # vicon_obs = {x, 0, y, 0, z, 0, phi, theta, psi, 0, 0, 0}.
+                if first_ep_iteration:
+                    action = np.zeros(4)
+                    reward = 0
+                    done = False
+                    info = {}
+                    first_ep_iteration = False
+                command_type, args = ctrl.cmdFirmware(curr_time, vicon_obs, reward, done, info)
 
-        # Compute control input.
-        if config.use_firmware:
-            vicon_obs = [obs[0], 0, obs[2], 0, obs[4], 0, obs[6], obs[7], obs[8], 0, 0, 0]
-                # obs = {x, x_dot, y, y_dot, z, z_dot, phi, theta, psi, p, q, r}.
-                # vicon_obs = {x, 0, y, 0, z, 0, phi, theta, psi, 0, 0, 0}.
-            if first_ep_iteration:
-                action = np.zeros(4)
-                reward = 0
-                done = False
-                info = {}
-                first_ep_iteration = False
-            command_type, args = ctrl.cmdFirmware(curr_time, vicon_obs, reward, done, info)
+                # Select interface.
+                if command_type == Command.FULLSTATE:
+                    firmware_wrapper.sendFullStateCmd(*args, curr_time)
+                elif command_type == Command.TAKEOFF:
+                    firmware_wrapper.sendTakeoffCmd(*args)
+                elif command_type == Command.LAND:
+                    firmware_wrapper.sendLandCmd(*args)
+                elif command_type == Command.STOP:
+                    firmware_wrapper.sendStopCmd()
+                elif command_type == Command.GOTO:
+                    firmware_wrapper.sendGotoCmd(*args)
+                elif command_type == Command.NOTIFYSETPOINTSTOP:
+                    firmware_wrapper.notifySetpointStop()
+                elif command_type == Command.NONE:
+                    pass
+                else:
+                    raise ValueError("[ERROR] Invalid command_type.")
 
-            # Select interface.
-            if command_type == Command.FULLSTATE:
-                firmware_wrapper.sendFullStateCmd(*args, curr_time)
-            elif command_type == Command.TAKEOFF:
-                firmware_wrapper.sendTakeoffCmd(*args)
-            elif command_type == Command.LAND:
-                firmware_wrapper.sendLandCmd(*args)
-            elif command_type == Command.STOP:
-                firmware_wrapper.sendStopCmd()
-            elif command_type == Command.GOTO:
-                firmware_wrapper.sendGotoCmd(*args)
-            elif command_type == Command.NOTIFYSETPOINTSTOP:
-                firmware_wrapper.notifySetpointStop()
-            elif command_type == Command.NONE:
-                pass
+                # # Step the environment.
+                # obs, reward, done, info, action = firmware_wrapper.step(curr_time, action)
             else:
-                raise ValueError("[ERROR] Invalid command_type.")
-
+                if first_ep_iteration:
+                    reward = 0
+                    done = False
+                    info = {}
+                    first_ep_iteration = False
+                target_pos, target_vel = ctrl.cmdSimOnly(curr_time, obs, reward, done, info)
+                action = thrusts(ctrl.ctrl, ctrl.CTRL_TIMESTEP, ctrl.KF, obs, target_pos, target_vel)
+                obs, reward, done, info = env.step(action)
+        
+        # Step function should run every time
+        if config.use_firmware:
             # Step the environment.
             obs, reward, done, info, action = firmware_wrapper.step(curr_time, action)
         else:
-            if first_ep_iteration:
-                reward = 0
-                done = False
-                info = {}
-                first_ep_iteration = False
-            target_pos, target_vel = ctrl.cmdSimOnly(curr_time, obs, reward, done, info)
-            action = thrusts(ctrl.ctrl, ctrl.CTRL_TIMESTEP, ctrl.KF, obs, target_pos, target_vel)
             obs, reward, done, info = env.step(action)
 
         # Update the controller internal state and models.

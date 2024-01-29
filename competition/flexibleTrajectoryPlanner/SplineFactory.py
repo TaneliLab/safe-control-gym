@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 # INIT_FLIGHT_TIME = 12
 class TrajectoryGenerator:
 
-    def __init__(self, initial_obs, initial_info, sampleRate, flight_time_init):
+    def __init__(self, initial_obs, initial_info, sampleRate,
+                 flight_time_init):
         """Initialization of the class
 
         Args:
@@ -28,12 +29,12 @@ class TrajectoryGenerator:
         self.NOMINAL_OBSTACLES = initial_info["nominal_obstacles_pos"]
 
         # Starting position
-        self.start = (initial_obs[0], initial_obs[2],
-                          HEIGHT_TALL_GATE)
+        self.start = (initial_obs[0], initial_obs[2], HEIGHT_TALL_GATE)
 
         # End position
-        self.goal = (initial_info["x_reference"][0], initial_info["x_reference"][2],
-            initial_info["x_reference"][4])
+        self.goal = (initial_info["x_reference"][0],
+                     initial_info["x_reference"][2],
+                     initial_info["x_reference"][4])
 
         # Gates position
         # TODO: fix because we need to find center point
@@ -43,7 +44,7 @@ class TrajectoryGenerator:
 
         # Waypoints of the trajectory
         self.waypoints = self.setWaypoints()
-        self.n = len(self.waypoints) # 6: conatin start goal 
+        self.n = len(self.waypoints)  # 6: conatin start goal
 
         # Time duration of the spline in seconds
         self.t = flight_time_init
@@ -51,7 +52,7 @@ class TrajectoryGenerator:
 
         # B-Spline parametrizing the state-space of the trajectory
         self.sampleRate = sampleRate
-        
+
         # self.spline = self.interpolate_twoForGate()  #two gate points mode
         self.spline = self.interpolate_single_gate()  # one gate mode
 
@@ -59,9 +60,10 @@ class TrajectoryGenerator:
 
         self.x = self.spline.c.flatten()
         self.new_x = self.x
-        self.plot_spline()
-        # self.new_x = self.x + 0.1
-        
+
+        # show the inital pos velo acc spline
+        #  self.plot_spline()
+
 
     def setWaypoints(self):
         """Sets the waypoints from the gates and start and goal positions"""
@@ -71,12 +73,14 @@ class TrajectoryGenerator:
         ways = []
         ways.append(self.start)
         for idx, g in enumerate(self.NOMINAL_GATES):
-            height = self.initial_info["gate_dimensions"]["tall"]["height"] if g[6] == 0 else self.initial_info["gate_dimensions"]["low"]["height"]
+            height = self.initial_info["gate_dimensions"]["tall"][
+                "height"] if g[6] == 0 else self.initial_info[
+                    "gate_dimensions"]["low"]["height"]
             ways.append((g[0], g[1], height))
 
         ways.append(self.goal)
         return np.array(ways)
-    
+
     def interpolate_twoForGate(self):
         """Interpolate based on waypoints on a fictitious knot vector
 
@@ -85,7 +89,6 @@ class TrajectoryGenerator:
         """
 
         # Compute the initial knot vector to perform interpolation
-        
 
         knots = np.linspace(0, self.t, self.n)
 
@@ -110,7 +113,7 @@ class TrajectoryGenerator:
 
         # Interpolation of the same B-spline with more control points
 
-        num_control_points = self.n + (self.n-1) * (self.sampleRate - 1)
+        num_control_points = self.n + (self.n - 1) * (self.sampleRate - 1)
         timesteps = np.linspace(0, self.t, num_control_points)
         delta_t = timesteps[1] - timesteps[0]
         controlPoints = self.spline(timesteps)
@@ -125,26 +128,33 @@ class TrajectoryGenerator:
         delta = 0.2
         deltat_scale = 0.1
         for idx, g in enumerate(self.NOMINAL_GATES):
-            height = self.initial_info["gate_dimensions"]["tall"]["height"] if g[6] == 0 else self.initial_info["gate_dimensions"]["low"]["height"]
-            delta_p = [-delta*np.sin(g[5]), delta*np.cos(g[5]), 0]
-            gate_idx = (idx + 1)*self.sampleRate
+            height = self.initial_info["gate_dimensions"]["tall"][
+                "height"] if g[6] == 0 else self.initial_info[
+                    "gate_dimensions"]["low"]["height"]
+            delta_p = [-delta * np.sin(g[5]), delta * np.cos(g[5]), 0]
+            gate_idx = (idx + 1) * self.sampleRate
 
-            before_gate_pos = gatePoints[idx,:] - delta_p
-            after_gate_pos = gatePoints[idx,:] + delta_p
+            before_gate_pos = gatePoints[idx, :] - delta_p
+            after_gate_pos = gatePoints[idx, :] + delta_p
             two_gate_pos = np.array([before_gate_pos, after_gate_pos])
 
-            before_gate_time = gatetimesteps[idx] - delta_t*deltat_scale
-            after_gate_time = gatetimesteps[idx] + delta_t*deltat_scale
+            before_gate_time = gatetimesteps[idx] - delta_t * deltat_scale
+            after_gate_time = gatetimesteps[idx] + delta_t * deltat_scale
             two_gate_time = np.array([before_gate_time, after_gate_time])
             factory_timesteps = np.hstack((factory_timesteps, two_gate_time))
-            middle_time = timesteps[(idx+1)*self.sampleRate+1 : (idx+2)*self.sampleRate]
+            middle_time = timesteps[(idx + 1) * self.sampleRate + 1:(idx + 2) *
+                                    self.sampleRate]
             factory_timesteps = np.hstack((factory_timesteps, middle_time))
 
-            factory_controlPoints = np.vstack((factory_controlPoints, two_gate_pos))
-            middle_point = controlPoints[(idx+1)*self.sampleRate+1 : (idx+2)*self.sampleRate, :]
-            factory_controlPoints = np.vstack((factory_controlPoints, middle_point))
-        
-        factory_controlPoints = np.vstack((factory_controlPoints, controlPoints[-1, :]))
+            factory_controlPoints = np.vstack(
+                (factory_controlPoints, two_gate_pos))
+            middle_point = controlPoints[(idx + 1) * self.sampleRate +
+                                         1:(idx + 2) * self.sampleRate, :]
+            factory_controlPoints = np.vstack(
+                (factory_controlPoints, middle_point))
+
+        factory_controlPoints = np.vstack(
+            (factory_controlPoints, controlPoints[-1, :]))
         factory_timesteps = np.hstack((factory_timesteps, timesteps[-1]))
 
         # print("factory_controlPoints:", factory_controlPoints)
@@ -156,7 +166,6 @@ class TrajectoryGenerator:
                                                   factory_controlPoints,
                                                   k=self.degree,
                                                   bc_type=bc)
-
 
         # exctract the knot vector
         self.knots = self.spline.t
@@ -181,7 +190,6 @@ class TrajectoryGenerator:
         """
 
         # Compute the initial knot vector to perform interpolation
-        
 
         knots = np.linspace(0, self.t, self.n)
 
@@ -206,7 +214,7 @@ class TrajectoryGenerator:
 
         # Interpolation of the same B-spline with more control points
 
-        num_control_points = self.n + (self.n-1) * (self.sampleRate - 1)
+        num_control_points = self.n + (self.n - 1) * (self.sampleRate - 1)
         timesteps = np.linspace(0, self.t, num_control_points)
         delta_t = timesteps[1] - timesteps[0]
         controlPoints = self.spline(timesteps)
@@ -217,7 +225,6 @@ class TrajectoryGenerator:
                                                   controlPoints,
                                                   k=self.degree,
                                                   bc_type=bc)
-
 
         # exctract the knot vector
         self.knots = self.spline.t
@@ -239,8 +246,8 @@ class TrajectoryGenerator:
         velo_spline = self.spline.derivative(1)
         acc_spline = self.spline.derivative(2)
         knot = self.spline.t
-        
-        time = self.t*np.linspace(0,1,100)
+
+        time = self.t * np.linspace(0, 1, 100)
 
         pos = pos_spline(time)
         velo = velo_spline(time)
