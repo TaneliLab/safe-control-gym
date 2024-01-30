@@ -442,8 +442,8 @@ class Controller():
         """
         self.interstep_counter += 1
         # Store the last step's events.
-        self.action_buffer.append(
-            action)  # [0.0899749 , 0.0852309 , 0.11418897, 0.11787074]
+        # self.action_buffer.append(
+        #     action)  # [0.0899749 , 0.0852309 , 0.11418897, 0.11787074]
         self.obs_buffer.append(obs)
         self.reward_buffer.append(reward)
         self.done_buffer.append(done)
