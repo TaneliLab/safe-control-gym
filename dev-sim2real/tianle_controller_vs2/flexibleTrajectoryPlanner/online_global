@@ -1,0 +1,54 @@
+
+Succeed case 1
+# onlinelocalReplanner
+VMAX = 6
+AMAX = 3
+LAMBDA_GATES = 4000
+LAMBDA_DRONE = 1000
+LAMBDA_V = 0
+LAMBDA_ACC = 1000
+LAMBDA_HEADING = 1000
+
+# globalplanner
+VMAX = 6
+AMAX = 3
+LAMBDA_T = 5
+LAMBDA_GATES = 500
+LAMBDA_V = 100
+LAMBDA_ACC = 500
+LAMBDA_OBST = 500
+# LAMBDA_TURN = 0
+# LAMBDA_TURN_ANGLE = 0
+LAMBDA_HEADING = 1
+self.sampleRate = 5
+self.init_flight_time = 13
+
+
+##################################
+Succeed case 2
+
+#onlinelocalReplanner
+VMAX = 6
+AMAX = 4
+LAMBDA_GATES = 4000
+LAMBDA_DRONE = 1000
+LAMBDA_V = 0
+LAMBDA_ACC = 1000
+LAMBDA_HEADING = 1000
+
+
+# globalplanner
+VMAX = 6
+AMAX = 6
+LAMBDA_T = 5
+LAMBDA_GATES = 500
+LAMBDA_V = 100
+LAMBDA_ACC = 500
+LAMBDA_OBST = 500
+# LAMBDA_TURN = 0
+# LAMBDA_TURN_ANGLE = 0
+LAMBDA_HEADING = 1
+self.sampleRate = 5
+self.init_flight_time = 10 
+
+acc dt=0.6  
