@@ -125,10 +125,10 @@ class Controller():
         #########################
         
         # hyperparmeters 
-        self.LC_Module = True
+        self.LC_Module = False
         self.Planner_Type = "replan"   #"classical", "replan", "only_init"
         self.sampleRate = 5
-        self.init_flight_time = 10
+        self.init_flight_time = 14
 
         self.gate_id_now = -99
         self.takeoffFlag = False
@@ -509,21 +509,22 @@ class Controller():
             # when self.gate_id_now != current_gate_id the replan triggered once
             # then will make gate_id_now = current_gate_id so not triggered again
 
-            if self.Planner_Type == "replan" and self.gate_id_now != current_gate_id:
-                trajLocalPlanner = OnlineLocalReplanner(
-                    self.trajectory, self.sampleRate, current_gate_id,
-                    true_gate_pose, obs, self.current_time-self.takeOffTime)
+            # --------------------------Online replan block-------------
+            # if self.Planner_Type == "replan" and self.gate_id_now != current_gate_id:
+            #     trajLocalPlanner = OnlineLocalReplanner(
+            #         self.trajectory, self.sampleRate, current_gate_id,
+            #         true_gate_pose, obs, self.current_time-self.takeOffTime)
 
-                self.trajectory = trajLocalPlanner.optimizer()
+            #     self.trajectory = trajLocalPlanner.optimizer()
 
-                self.gate_id_now = current_gate_id
-                timesteps = np.linspace(
-                    0, self.flight_duration,
-                    int(self.flight_duration * self.CTRL_FREQ))
+            #     self.gate_id_now = current_gate_id
+            #     timesteps = np.linspace(
+            #         0, self.flight_duration,
+            #         int(self.flight_duration * self.CTRL_FREQ))
 
-                self.p = self.trajectory(timesteps)
-                self.v = self.trajectory.derivative(1)(timesteps)
-                self.a = self.trajectory.derivative(2)(timesteps)
+            #     self.p = self.trajectory(timesteps)
+            #     self.v = self.trajectory.derivative(1)(timesteps)
+            #     self.a = self.trajectory.derivative(2)(timesteps)
 
         #########################
         # REPLACE THIS (END) ####

@@ -9,17 +9,17 @@ import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 VERBOSE = False
-VERBOSE_PLOT = False
+VERBOSE_PLOT = True
 VMAX = 6
-AMAX = 6
+AMAX = 4.5
 LAMBDA_T = 5
-LAMBDA_GATES = 500
+LAMBDA_GATES = 1000
 LAMBDA_V = 100
 LAMBDA_ACC = 500
 LAMBDA_OBST = 500
 # LAMBDA_TURN = 0
 # LAMBDA_TURN_ANGLE = 0
-LAMBDA_HEADING = 1
+LAMBDA_HEADING = 100
 
 # Gates properties: {'tall': {'shape': 'square', 'height': 1.0, 'edge': 0.45}, 'low': {'shape': 'square', 'height': 0.525, 'edge': 0.45}}
 # Obstacles properties: {'shape': 'cylinder', 'height': 1.05, 'radius': 0.05}
@@ -241,7 +241,7 @@ class Globalplanner:
         # Iterate through waypoints
         for idx, w in enumerate(self.waypoints[1:-1]):
             # Compute the distance between the waypoint and the positions
-            delta = np.linalg.norm(positions - w, axis=1)
+            delta = np.linalg.norm(positions - w, axis=1)*10 #small trick
             # Select the closest waypoint and penalize the distance
             # print(idx, ", ", np.min(delta))
             cost += np.min(delta)**2
@@ -262,7 +262,7 @@ class Globalplanner:
         positions = spline(gate_knot)  # positions of control points
 
         for idx, g in enumerate(self.NOMINAL_GATES):
-            dt = 0.3
+            dt = 0.8
             height = self.initial_info["gate_dimensions"]["tall"][
                 "height"] if g[6] == 0 else self.initial_info[
                     "gate_dimensions"]["low"]["height"]
