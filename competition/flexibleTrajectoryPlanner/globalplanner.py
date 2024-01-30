@@ -11,12 +11,12 @@ import matplotlib.pyplot as plt
 VERBOSE = False
 VERBOSE_PLOT = True
 VMAX = 6
-AMAX = 4.5
+AMAX = 4
 LAMBDA_T = 5
 LAMBDA_GATES = 1000
 LAMBDA_V = 100
 LAMBDA_ACC = 500
-LAMBDA_OBST = 500
+LAMBDA_OBST = 1000
 # LAMBDA_TURN = 0
 # LAMBDA_TURN_ANGLE = 0
 LAMBDA_HEADING = 100
@@ -338,14 +338,14 @@ class Globalplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 0.25  # penalty on spline points smaller than threshold
+        threshold = 0.3  # penalty on spline points smaller than threshold
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
         knots = self.deltaT2knot(deltaT)
         key_knot = knots[5:-5]
         t_T = key_knot[-1]
-        dense_knot = np.linspace(0, t_T, 100)
+        dense_knot = np.linspace(0, t_T, 50)
         positions = spline(dense_knot)
 
         cost = 0
@@ -369,7 +369,7 @@ class Globalplanner:
             # print("delta_height：", delta_height)
             # Select the ones below the threshold(dangerous)
             mask_dist_unsafe = dist < threshold
-            mask_height_unsafe = delta_height < 0.05
+            mask_height_unsafe = delta_height < 0.08
             mask = [
                 a and b for a, b in zip(mask_dist_unsafe, mask_height_unsafe)
             ]
