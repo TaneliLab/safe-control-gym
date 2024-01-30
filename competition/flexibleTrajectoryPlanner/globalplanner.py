@@ -13,13 +13,13 @@ VERBOSE_PLOT = False
 VMAX = 6
 AMAX = 6
 LAMBDA_T = 5
-LAMBDA_GATES = 2000
+LAMBDA_GATES = 500
 LAMBDA_V = 100
-LAMBDA_ACC = 200
+LAMBDA_ACC = 500
 LAMBDA_OBST = 500
 # LAMBDA_TURN = 0
 # LAMBDA_TURN_ANGLE = 0
-LAMBDA_HEADING = 20
+LAMBDA_HEADING = 1
 
 # Gates properties: {'tall': {'shape': 'square', 'height': 1.0, 'edge': 0.45}, 'low': {'shape': 'square', 'height': 0.525, 'edge': 0.45}}
 # Obstacles properties: {'shape': 'cylinder', 'height': 1.05, 'radius': 0.05}

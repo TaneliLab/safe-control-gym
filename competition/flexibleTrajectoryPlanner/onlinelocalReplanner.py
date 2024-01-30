@@ -9,13 +9,13 @@ import scipy.optimize as opt
 import math
 import matplotlib.pyplot as plt
 
-VERBOSE_PLOT = True
+VERBOSE_PLOT = False
 VMAX = 6
-AMAX = 6
-LAMBDA_GATES = 1000
+AMAX = 4
+LAMBDA_GATES = 4000
 LAMBDA_DRONE = 1000
-LAMBDA_V = 10
-LAMBDA_ACC = 50
+LAMBDA_V = 0
+LAMBDA_ACC = 1000
 LAMBDA_HEADING = 1000
 
 # Say as failure case
@@ -153,7 +153,7 @@ class OnlineLocalReplanner:
 
         cost += LAMBDA_HEADING * self.headingCost_local(x, spline)
         cost += LAMBDA_GATES * self.gatesCost_local(x, spline)
-        cost += LAMBDA_V * self.velocityLimitCost(x, spline)
+        # cost += LAMBDA_V * self.velocityLimitCost(x, spline)
         cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
         cost += LAMBDA_DRONE * self.droneCost(x, spline)
         return cost
@@ -162,7 +162,7 @@ class OnlineLocalReplanner:
     def headingCost_local(self, x, spline):
         # only for single gate point
         cost = 0
-        dt = 0.2
+        dt = 0.1  # smaller more accuarate
 
         # coeffs = self.unpackx(x)
         # print("headingCost_local_coeffs:", coeffs)
@@ -200,12 +200,12 @@ class OnlineLocalReplanner:
         cost = 0
         # coeffs = self.unpackx(x)
         gate_knot = self.knot[self.knot_id_gate]
-        dt = 0.2
+        dt = 0.1   # smaller more accurate
         local_gate_knot = np.linspace(gate_knot - dt, gate_knot + dt, 10)
         positions = spline(local_gate_knot)
         # Iterate through waypoints
         P0 = self.current_gate_pos[0:3]
-        delta = np.linalg.norm(positions - P0, axis=1)
+        delta = np.linalg.norm(positions - P0, axis=1)*10  # little trick times 10 to amplify
         cost = np.min(delta)**2
 
         return cost
@@ -245,11 +245,14 @@ class OnlineLocalReplanner:
         """
 
         # Get control points of velocity spline
-        vals = spline.derivative(2).c
-
+        vals = spline.derivative(2)
+        gate_knot = self.knot[self.knot_id_gate]
+        dt = 0.6  # larger to expand control region
+        local_gate_knot = np.linspace(gate_knot - dt, gate_knot + dt, 10)
+        velos = vals(local_gate_knot)
         # COmpute the squared norms
         # norms = np.square(np.linalg.norm(vals, axis=1))
-        norms = np.linalg.norm(vals, axis=1)
+        norms = np.linalg.norm(velos, axis=1)
         # Obtain the ones which exceed the limit
         mask = norms > self.amax
         # Get cost

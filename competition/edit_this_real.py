@@ -123,68 +123,72 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
-        self.gate_id_now = -99
+        
+        # hyperparmeters 
         self.LC_Module = True
-        self.Planner_Type = "classical"
-        self.Planner_Type = "replan"
-        self.takeoffFlag = False
-        self.sampleRate = 4
+        self.Planner_Type = "replan"   #"classical", "replan", "only_init"
+        self.sampleRate = 5
         self.init_flight_time = 10
+
+        self.gate_id_now = -99
+        self.takeoffFlag = False
         self.completeFlag = False
         self.high2lowlevelFlag = True  # allow notifysetpoint command
         self.low2highlevelFlag = True
+        self.takeOffTime = 1
+        self.takeOffHeight = 1
+        self.onflyHeight = 1   # for adaptive control test 
+
         # Call a function in module `example_custom_utils`.
         ecu.exampleFunction()
 
-        # Example: hardcode waypoints through the gates.
-        height_tall = 1.14
-        height_low = 0.55
-        if use_firmware:
-            waypoints = [
-                (self.initial_obs[0], self.initial_obs[2], height_tall)
-            ]  # Height is hardcoded scenario knowledge.
-        else:
-            waypoints = [(self.initial_obs[0], self.initial_obs[2],
-                          self.initial_obs[4])]
+        # # Example: hardcode waypoints through the gates.
+        # height_tall = 1.14
+        # height_low = 0.55
+        # if use_firmware:
+        #     waypoints = [
+        #         (self.initial_obs[0], self.initial_obs[2], height_tall)
+        #     ]  # Height is hardcoded scenario knowledge.
+        # else:
+        #     waypoints = [(self.initial_obs[0], self.initial_obs[2],
+        #                   self.initial_obs[4])]
 
-        for idx, g in enumerate(self.NOMINAL_GATES):
-            if g[6] == 0:  #tall
-                waypoints.append(
-                    (g[0], g[1],
-                     initial_info["gate_dimensions"]["tall"]["height"]))
-            else:
-                waypoints.append(
-                    (g[0], g[1],
-                     initial_info["gate_dimensions"]["low"]["height"]))
+        # for idx, g in enumerate(self.NOMINAL_GATES):
+        #     if g[6] == 0:  #tall
+        #         waypoints.append(
+        #             (g[0], g[1],
+        #              initial_info["gate_dimensions"]["tall"]["height"]))
+        #     else:
+        #         waypoints.append(
+        #             (g[0], g[1],
+        #              initial_info["gate_dimensions"]["low"]["height"]))
 
-        waypoints.append([
-            initial_info["x_reference"][0], initial_info["x_reference"][2],
-            initial_info["x_reference"][4]
-        ])
+        # waypoints.append([
+        #     initial_info["x_reference"][0], initial_info["x_reference"][2],
+        #     initial_info["x_reference"][4]
+        # ])
 
-        waypoints2 = waypoints[1:-1]
-        waypoints2 = np.array(waypoints2)
+        # waypoints2 = waypoints[1:-1]
+        # waypoints2 = np.array(waypoints2)
 
-        # print(waypoints)
-        # Polynomial fit.
-        self.waypoints = np.array(waypoints)
-        deg = 6
+        # # Polynomial fit.
+        # self.waypoints = np.array(waypoints)
 
-        # TOM Version
-        if self.Planner_Type == "classic":
-            trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
-                                            waypoints2, self.NOMINAL_OBSTACLES)
+        # # TOM Version
+        # if self.Planner_Type == "classic":
+        #     trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
+        #                                     waypoints2, self.NOMINAL_OBSTACLES)
 
-            trajPlanner.optimizer()
+        #     trajPlanner.optimizer()
 
-            trajectory = trajPlanner.spline
-            omegaTrajectory = trajPlanner.omega_spline
+        #     trajectory = trajPlanner.spline
+        #     omegaTrajectory = trajPlanner.omega_spline
 
-        elif self.Planner_Type == "replan":
+        if self.Planner_Type == "replan":
             # trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
             #                               waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate, self.init_flight_time)
 
-            # Better way of Generator
+            # Better way of Generator, plug waypoints into Trajectory Generator
             trajGen = TrajectoryGenerator(initial_obs, initial_info,
                                           self.sampleRate,
                                           self.init_flight_time)
@@ -197,28 +201,27 @@ class Controller():
             trajPlanner.optimizer()
             trajectory = trajPlanner.spline
 
+        elif self.Planner_Type == "only_init":
+            
+            trajGen = TrajectoryGenerator(initial_obs, initial_info,
+                                          self.sampleRate,
+                                          self.init_flight_time)
+            self.traj_waypoints = trajGen.waypoints
+
+            trajectory = trajGen.spline  #init spline
+
+            trajPlanner = Globalplanner(trajectory, initial_obs, initial_info,
+                                        self.sampleRate)
+
+
         self.trajectory = copy.copy(trajectory)
-        # duration = trajPlanner.t
-
-
-        self.takeOffTime = 1
-        self.takeOffHeight = 1
-        self.onflyHeight = 1
-        # takeoff_timesteps = np.array([0 for i in range(self.takeOffTime*self.CTRL_FREQ -1)])
-        # onfly_timesteps = np.linspace(0, duration-self.takeOffTime, int((duration-self.takeOffTime)*self.CTRL_FREQ))
-        # # print("takeoff_timesteps:", takeoff_timesteps)
-        # # print("onfly_timesteps:", onfly_timesteps)
-        # timesteps = np.concatenate((takeoff_timesteps, onfly_timesteps))
-
         self.flight_duration = trajPlanner.t  # flight duration
-        # self.flight_duration = trajGen.t  # flight duration
         print("flight time plan:", self.flight_duration)
+
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
-        t_scaled = timesteps
 
         self.p = trajectory(timesteps)
-
         self.v = trajectory.derivative(1)(timesteps)
         self.a = trajectory.derivative(2)(timesteps)
 
@@ -228,29 +231,12 @@ class Controller():
         self.ref_y = self.p.T[1]
         self.ref_z = self.p.T[2]
 
-        # # ---------------testing with simple trajectories -------------
-        # self.ref_x = np.sin(timesteps) + self.initial_obs[0]
-        # self.ref_y = np.cos(timesteps) - 1 + self.initial_obs[2]
-        # # constant height
-        # # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
-        # self.ref_z = 0.2*np.sin(timesteps) + self.onflyHeight
-
-        # For plotting and Learn to Compensate
-        # self.onfly_time = []
-        # self.onfly_ref_x = []
-        # self.onfly_ref_y = []
-        # self.onfly_ref_z = []
-        # self.onfly_obs_x = []
-        # self.onfly_obs_y = []
-        # self.onfly_obs_z = []
-        # self.onfly_acc_z = []
-
         # for acc_command compensation:
         self.acc_ff = [0, 0, 0]
 
         if self.VERBOSE:
             # Plot trajectory in each dimension and 3D.
-            plot_trajectory(t_scaled, self.traj_waypoints, self.ref_x,
+            plot_trajectory(timesteps, self.traj_waypoints, self.ref_x,
                             self.ref_y, self.ref_z)
 
             # Draw the trajectory on PyBullet's GUI.
@@ -523,21 +509,21 @@ class Controller():
             # when self.gate_id_now != current_gate_id the replan triggered once
             # then will make gate_id_now = current_gate_id so not triggered again
 
-            # if self.Planner_Type == "replan" and self.gate_id_now != current_gate_id:
-            #     trajLocalPlanner = OnlineLocalReplanner(
-            #         self.trajectory, self.sampleRate, current_gate_id,
-            #         true_gate_pose, obs, self.current_time-self.takeOffTime)
+            if self.Planner_Type == "replan" and self.gate_id_now != current_gate_id:
+                trajLocalPlanner = OnlineLocalReplanner(
+                    self.trajectory, self.sampleRate, current_gate_id,
+                    true_gate_pose, obs, self.current_time-self.takeOffTime)
 
-            #     self.trajectory = trajLocalPlanner.optimizer()
+                self.trajectory = trajLocalPlanner.optimizer()
 
-            #     self.gate_id_now = current_gate_id
-            #     timesteps = np.linspace(
-            #         0, self.flight_duration,
-            #         int(self.flight_duration * self.CTRL_FREQ))
+                self.gate_id_now = current_gate_id
+                timesteps = np.linspace(
+                    0, self.flight_duration,
+                    int(self.flight_duration * self.CTRL_FREQ))
 
-            #     self.p = self.trajectory(timesteps)
-            #     self.v = self.trajectory.derivative(1)(timesteps)
-            #     self.a = self.trajectory.derivative(2)(timesteps)
+                self.p = self.trajectory(timesteps)
+                self.v = self.trajectory.derivative(1)(timesteps)
+                self.a = self.trajectory.derivative(2)(timesteps)
 
         #########################
         # REPLACE THIS (END) ####
