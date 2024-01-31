@@ -376,6 +376,7 @@ class Globalplanner:
         coeffs, deltaT = self.unpackX2deltaT(x)
         knots = self.deltaT2knot(deltaT)
         key_knot = knots[5:-5]
+
         t_T = key_knot[-1]
         dense_knot = np.linspace(0, t_T, 50)
         positions = spline(dense_knot)
@@ -410,29 +411,45 @@ class Globalplanner:
             # Cost as the difference between the threshold values and the summed breach of constraint
             cost += (threshold * len(breached) - np.sum(breached))**2
 
+        # 
+        
+        # also keep the start knot
+        gateknots = [6 + (idx) * self.sampleRate for idx in range( len(self.NOMINAL_GATES) + 1 )]  # 0 1 2 3
+        # print("gateknots:", gateknots)
+        dt = 0.5
+        risky_hit_gate_knots = np.array([])
+        for idx in range(len(self.NOMINAL_GATES)):  # 0 1 2 3
+            start_t = knots[gateknots[idx]] + dt
+            end_t = knots[gateknots[idx+1]] - dt
+            assert start_t < end_t, "[error]obstacleCost_strict: dt for gate collision avoidance set to high!!"
+            risky_time = np.linspace(start_t, end_t, 20)
+            risky_hit_gate_knots = np.hstack((risky_hit_gate_knots, risky_time))
+        # print("risky_hit_gate_knots:", risky_hit_gate_knots)
+        positions_risky = spline(risky_hit_gate_knots)
+
+        threshold = self.initial_info['gate_dimensions']['tall']['edge']/2 + 0.3
         for idx, g in enumerate(self.NOMINAL_GATES):
-            heading = g[5]
-            gate_edge = self.initial_info['gate_dimensions']['tall']['edge']/2
+            
+            # TODO: positions exclude the time when passing, they are kept safe by heading cost
+
             gate_height = self.initial_info["gate_dimensions"]["tall"][
                 "height"] if g[6] == 0 else self.initial_info[
                     "gate_dimensions"]["low"]["height"] 
-            obst1_pos = [g[0] + np.cos(heading)*gate_edge, g[1] + np.sin(heading)*gate_edge, gate_height+gate_edge]
-            obst2_pos = [g[0] - np.cos(heading)*gate_edge, g[1] - np.sin(heading)*gate_edge, gate_height+gate_edge]
+            
+            obst_gate = [g[0], g[1], gate_height]
+            dist = np.linalg.norm(positions_risky[:, :2] - obst_gate[:2], axis=1)
+            delta_height = positions_risky[:, 2] - obst_gate[2]
+            mask_dist_unsafe = dist < threshold
+            mask_hight_unsafe = delta_height <0.05
 
-            dist1 = np.linalg.norm(positions[:, :2] - obst1_pos[:2], axis=1)
-            dist2 = np.linalg.norm(positions[:, :2] - obst2_pos[:2], axis=1)
-            mask_dist1_unsafe = dist1 < threshold
-            mask_dist2_unsafe = dist2 < threshold
             mask = [
-                a and b for a, b in zip(mask_dist1_unsafe, mask_dist2_unsafe)
+                a and b for a, b in zip(mask_dist_unsafe, mask_hight_unsafe)
             ]
-            breached1 = dist1[mask]
-            breached2 = dist2[mask]
+
+            breached = dist[mask]
             # print("breached:", breached) 
             # Cost as the difference between the threshold values and the summed breach of constraint
-            cost += (threshold * len(breached1) - np.sum(breached1))**2
-            cost += (threshold * len(breached2) - np.sum(breached2))**2
-
+            cost += (threshold * len(breached) - np.sum(breached))**2
 
         if VERBOSE:
             print("obstacle cost: ", cost)

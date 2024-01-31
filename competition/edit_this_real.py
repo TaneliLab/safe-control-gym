@@ -127,7 +127,7 @@ class Controller():
         # hyperparmeters 
         self.LC_Module = False
         self.Planner_Type = "replan"   #"classical", "replan", "only_init"
-        self.sampleRate = 5
+        self.sampleRate = 4
         self.init_flight_time = 14
 
         self.gate_id_now = -99
