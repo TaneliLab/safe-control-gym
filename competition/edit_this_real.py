@@ -132,12 +132,18 @@ class Controller():
 
         self.gate_id_now = -99
         self.takeoffFlag = False
-        self.completeFlag = False
-        self.high2lowlevelFlag = True  # allow notifysetpoint command
-        self.low2highlevelFlag = True
+        
         self.takeOffTime = 1
         self.takeOffHeight = 1
         self.onflyHeight = 1   # for adaptive control test 
+
+        self.completeFlag = False
+        self.high2lowlevelFlag = True  # allow notifysetpoint command
+        self.low2highlevelFlag = True
+        self.takeoff = False
+        self.takeoff_cmd = False
+        self.land = False
+        self.land_cmd = False
 
         # Call a function in module `example_custom_utils`.
         ecu.exampleFunction()
@@ -284,17 +290,20 @@ class Controller():
         endpoint_freq = self.flight_duration + 1  # can not set as planned duration, seems will not stop
 
         # endpoint_freq = 9
-        if iteration == 0:
-            height = self.takeOffHeight
-            # duration = 2
+        if not self.takeoff:
+            self.takeoff = obs[4] > 0.8
+            height = 1
             duration = self.takeOffTime - 0.2
-
-            command_type = Command(2)  # Take-off.
-            self.takeoffFlag = True
+            command_type = Command(2)  # Take-off cmd
             args = [height, duration]
+            if self.takeoff_cmd:
+                command_type = Command(0)  # None.
+                args = []
+            else:
+                self.takeoff_cmd = True
 
-        # elif iteration == self.takeOffTime * self.CTRL_FREQ:
-        elif self.takeoffFlag and self.high2lowlevelFlag:
+        elif self.high2lowlevelFlag:
+            print("Notify setpoint stop. highlevel->lowlevel")
             command_type = Command(6)  # Notify setpoint stop.
             args = []
             self.high2lowlevelFlag = False
@@ -367,10 +376,29 @@ class Controller():
         #     command_type = Command(3)  # Land.
         #     args = [height, duration]
 
-        elif iteration == int((endpoint_freq + 12) * self.CTRL_FREQ):
-            command_type = Command(-1)
-            # Terminate command to be sent once the trajectory is completed.
-            args = []
+        # elif self.low2highlevelFlag and self.completeFlag:
+        #     print("Notify setpoint stop. lowlevel->highlevel")
+        #     command_type = Command(6)  # Notify setpoint stop.
+        #     args = []
+        #     self.low2highlevelFlag = False
+
+        # elif self.completeFlag and not self.land:
+        #     self.land = obs[4]<0.05
+        #     height = 0.
+        #     duration = 2
+        #     command_type = Command(3)  # Land.
+        #     args = [height, duration]
+        #     if self.land_cmd:
+        #         command_type = Command(0)  # None.
+        #         args = []
+        #     else:
+        #         self.land_cmd = True
+
+
+        # elif self.completeFlag and self.land:
+        #     command_type = Command(-1)
+        #     # Terminate command to be sent once the trajectory is completed.
+        #     args = []
 
         else:
             command_type = Command(0)  # None.
