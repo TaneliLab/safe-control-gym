@@ -262,35 +262,67 @@ class Globalplanner:
         positions = spline(gate_knot)  # positions of control points
 
         for idx, g in enumerate(self.NOMINAL_GATES):
-            dt = 0.8
+            # dt = 0.8
+            height = self.initial_info["gate_dimensions"]["tall"][
+                "height"] if g[6] == 0 else self.initial_info[
+                    "gate_dimensions"]["low"]["height"]
+
+            dt_set = np.linspace(0.05, 0.8, 10)
+            for dt in dt_set:
+                # idx match to gate knot so we know position to gate
+                before_gate_pos = spline(gate_knot[idx] - dt)  # :np.array
+                after_gate_pos = spline(gate_knot[idx] + dt)
+                d = after_gate_pos - before_gate_pos
+                N = np.array([-np.sin(g[5]), np.cos(g[5]), 0])
+
+                heading_angle_rad = np.arccos(
+                    np.dot(d, N) / (np.linalg.norm(d) * np.linalg.norm(N)))
+                heading_angle_deg = abs(np.degrees(heading_angle_rad))
+
+                cost += heading_angle_deg
+
+        return cost
+    
+    def intersectCost(self, x, spline):
+        # only for single gate point
+        cost = 0
+        coeffs, deltaT = self.unpackX2deltaT(x)
+        knots = self.deltaT2knot(deltaT)
+        key_knot = knots[5:-5]
+
+        # only keep knot of the gate control points
+        gate_knot = key_knot[self.sampleRate:-1:self.sampleRate]
+
+        #  print("heading Cost key_knot:", key_knot)
+        positions = spline(gate_knot)  # positions of control points
+
+        for idx, g in enumerate(self.NOMINAL_GATES):
+            # dt = 0.8
+
+            # TODO: make two scheme for simulation and hardware
             height = self.initial_info["gate_dimensions"]["tall"][
                 "height"] if g[6] == 0 else self.initial_info[
                     "gate_dimensions"]["low"]["height"]
 
             # idx match to gate knot so we know position to gate
-            before_gate_pos = spline(gate_knot[idx] - dt)  # :np.array
-            after_gate_pos = spline(gate_knot[idx] + dt)
-            d = after_gate_pos - before_gate_pos
+            dt_set = np.linspace(0.05, 0.8, 10)
+            for dt in dt_set:
+                before_gate_pos = spline(gate_knot[idx] - dt)  # :np.array
+                after_gate_pos = spline(gate_knot[idx] + dt)
+                d = after_gate_pos - before_gate_pos
 
-            P0 = np.array([g[0], g[1], height])
-            N = np.array([-np.sin(g[5]), np.cos(g[5]), 0])
-            inter = np.dot(N, P0 - before_gate_pos) / np.dot(N, d)
+                P0 = np.array([g[0], g[1], height])
+                N = np.array([-np.sin(g[5]), np.cos(g[5]), 0])
+                inter = np.dot(N, P0 - before_gate_pos) / np.dot(N, d)
 
-            intersection = before_gate_pos + inter * d
+                intersection = before_gate_pos + inter * d
 
-            heading_angle_rad = np.arccos(
-                np.dot(d, N) / (np.linalg.norm(d) * np.linalg.norm(N)))
-            heading_angle_deg = abs(np.degrees(heading_angle_rad))
-            # print("heading_angle_deg:", heading_angle_deg)
-            # print("intersection:", intersection)
-            # print("P0:", P0)
-            # print("distance:", np.linalg.norm(intersection - P0, axis=0))
-            # compute distance from intersection point to gate center
-            distance = np.linalg.norm(intersection - P0, axis=0)**2
+                distance = np.linalg.norm(intersection - P0, axis=0)
 
-            cost += heading_angle_deg
+                cost += distance**2
 
         return cost
+
 
     def obstacleCost(self, x, spline):
         """Penalty for trajectories that are close to obstacles
@@ -378,75 +410,32 @@ class Globalplanner:
             # Cost as the difference between the threshold values and the summed breach of constraint
             cost += (threshold * len(breached) - np.sum(breached))**2
 
+        for idx, g in enumerate(self.NOMINAL_GATES):
+            heading = g[5]
+            gate_edge = self.initial_info['gate_dimensions']['tall']['edge']/2
+            gate_height = self.initial_info["gate_dimensions"]["tall"][
+                "height"] if g[6] == 0 else self.initial_info[
+                    "gate_dimensions"]["low"]["height"] 
+            obst1_pos = [g[0] + np.cos(heading)*gate_edge, g[1] + np.sin(heading)*gate_edge, gate_height+gate_edge]
+            obst2_pos = [g[0] - np.cos(heading)*gate_edge, g[1] - np.sin(heading)*gate_edge, gate_height+gate_edge]
+
+            dist1 = np.linalg.norm(positions[:, :2] - obst1_pos[:2], axis=1)
+            dist2 = np.linalg.norm(positions[:, :2] - obst2_pos[:2], axis=1)
+            mask_dist1_unsafe = dist1 < threshold
+            mask_dist2_unsafe = dist2 < threshold
+            mask = [
+                a and b for a, b in zip(mask_dist1_unsafe, mask_dist2_unsafe)
+            ]
+            breached1 = dist1[mask]
+            breached2 = dist2[mask]
+            # print("breached:", breached) 
+            # Cost as the difference between the threshold values and the summed breach of constraint
+            cost += (threshold * len(breached1) - np.sum(breached1))**2
+            cost += (threshold * len(breached2) - np.sum(breached2))**2
+
+
         if VERBOSE:
             print("obstacle cost: ", cost)
-        return cost
-
-    def TurningCost_OnlyAngle(self, x, spline):
-        cost = 0
-        # Get coeffs
-        dt = 0.01
-        coeffs, deltaT = self.unpackX2deltaT(x)
-        knots = self.deltaT2knot(deltaT)
-        key_knots = knots[5:-5]  # only middle time of control points
-        positions = spline(key_knots)
-        positions_prime = spline(key_knots + dt)
-        # knots = self.knots[5:-5]
-
-        ## Method 1
-        # Select only waypoint velo
-        velos = (positions_prime - positions) / dt
-        # for loop of all two waypoints
-        # calculate turning angle(theta) between two waypoints
-        # get planned time(delta_t) at two waypoints
-        # get theta/delta_t
-        for i in range(len(velos) - 1):
-            dir_1 = velos[i]
-            dir_2 = velos[i + 1]
-            cosine_12 = np.dot(
-                dir_1, dir_2) / (np.linalg.norm(dir_1) * np.linalg.norm(dir_2))
-            angle_in_rads = np.arccos(cosine_12)
-            # print(angle_in_rads)
-            # print(np.degrees(angle_in_rads))
-            cost += angle_in_rads
-
-        if VERBOSE:
-            print("Turning cost only angle: ", cost)
-        return cost
-
-    def TurningCost(self, x, spline):
-        cost = 0
-        # Get control points
-        # key_time = self.knots[5:-5]
-        dt = 0.02
-        # deltaT = x[self.len_control_coeffs:]
-        coeffs, deltaT = self.unpackX2deltaT(x)
-        knots = self.deltaT2knot(deltaT)
-        key_knots = knots[5:-5]  # only middle time of control points
-        positions = spline(key_knots)
-        positions_prime = spline(key_knots + dt)
-        # knots = self.knots[5:-5]
-
-        ## Method 1
-        # Select only waypoint velo
-        velos = (positions_prime - positions) / dt
-        # for loop of all two waypoints
-        # calculate turning angle(theta) between two waypoints
-        # get planned time(delta_t) at two waypoints
-        # get theta/delta_t
-        for i in range(len(velos) - 1):
-            dir_1 = velos[i]
-            dir_2 = velos[i + 1]
-            cosine_12 = np.dot(
-                dir_1, dir_2) / (np.linalg.norm(dir_1) * np.linalg.norm(dir_2))
-            angle_in_rads = np.arccos(cosine_12)
-            delta_t = key_knots[i + 1] - key_knots[i]
-            # print(angle_in_rads)
-            # print(np.degrees(angle_in_rads))
-            cost += angle_in_rads / delta_t
-
-        if VERBOSE:
-            print("Turning cost: ", cost)
         return cost
 
     def TimeCost(self, x, spline):
@@ -582,6 +571,7 @@ class Globalplanner:
         cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
         cost += LAMBDA_OBST * self.obstacleCost_strict(x, spline)
         cost += LAMBDA_HEADING * self.headingCost(x, spline)
+        cost += LAMBDA_HEADING * self.intersectCost(x, spline)
 
         # Performance Cost
         cost += LAMBDA_T * self.TimeCost(x, spline)
@@ -806,6 +796,75 @@ class Globalplanner:
         ax.legend()
         plt.show()
 
+
+    # def TurningCost_OnlyAngle(self, x, spline):
+    #     cost = 0
+    #     # Get coeffs
+    #     dt = 0.01
+    #     coeffs, deltaT = self.unpackX2deltaT(x)
+    #     knots = self.deltaT2knot(deltaT)
+    #     key_knots = knots[5:-5]  # only middle time of control points
+    #     positions = spline(key_knots)
+    #     positions_prime = spline(key_knots + dt)
+    #     # knots = self.knots[5:-5]
+
+    #     ## Method 1
+    #     # Select only waypoint velo
+    #     velos = (positions_prime - positions) / dt
+    #     # for loop of all two waypoints
+    #     # calculate turning angle(theta) between two waypoints
+    #     # get planned time(delta_t) at two waypoints
+    #     # get theta/delta_t
+    #     for i in range(len(velos) - 1):
+    #         dir_1 = velos[i]
+    #         dir_2 = velos[i + 1]
+    #         cosine_12 = np.dot(
+    #             dir_1, dir_2) / (np.linalg.norm(dir_1) * np.linalg.norm(dir_2))
+    #         angle_in_rads = np.arccos(cosine_12)
+    #         # print(angle_in_rads)
+    #         # print(np.degrees(angle_in_rads))
+    #         cost += angle_in_rads
+
+    #     if VERBOSE:
+    #         print("Turning cost only angle: ", cost)
+    #     return cost
+
+
+    def TurningCost(self, x, spline):
+
+        cost = 0
+        # Get control points
+        # key_time = self.knots[5:-5]
+        dt = 0.02
+        # deltaT = x[self.len_control_coeffs:]
+        coeffs, deltaT = self.unpackX2deltaT(x)
+        knots = self.deltaT2knot(deltaT)
+        key_knots = knots[5:-5]  # only middle time of control points
+        positions = spline(key_knots)
+        positions_prime = spline(key_knots + dt)
+        # knots = self.knots[5:-5]
+
+        ## Method 1
+        # Select only waypoint velo
+        velos = (positions_prime - positions) / dt
+        # for loop of all two waypoints
+        # calculate turning angle(theta) between two waypoints
+        # get planned time(delta_t) at two waypoints
+        # get theta/delta_t
+        for i in range(len(velos) - 1):
+            dir_1 = velos[i]
+            dir_2 = velos[i + 1]
+            cosine_12 = np.dot(
+                dir_1, dir_2) / (np.linalg.norm(dir_1) * np.linalg.norm(dir_2))
+            angle_in_rads = np.arccos(cosine_12)
+            delta_t = key_knots[i + 1] - key_knots[i]
+            # print(angle_in_rads)
+            # print(np.degrees(angle_in_rads))
+            cost += angle_in_rads / delta_t
+
+        if VERBOSE:
+            print("Turning cost: ", cost)
+        return cost
 
 if __name__ == "__main__":
 
