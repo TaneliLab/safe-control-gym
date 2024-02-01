@@ -384,7 +384,7 @@ class Globalplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 0.3  # penalty on spline points smaller than threshold
+        threshold = 0.4  # penalty on spline points smaller than threshold
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
