@@ -125,9 +125,9 @@ class Controller():
         #########################
         
         # hyperparmeters 
-        self.LC_Module = False
-        self.Planner_Type = "replan"   #"classical", "replan", "only_init"
-        self.sampleRate = 5
+        self.LC_Module = True
+        self.Planner_Type = "replan"   #"no_replan", "replan", "only_init"
+        self.sampleRate = 4
         self.init_flight_time = 14  # 10 with AMAX=8 infeasible
 
         self.gate_id_now = -99
@@ -198,6 +198,20 @@ class Controller():
             trajGen = TrajectoryGenerator(initial_obs, initial_info,
                                           self.sampleRate,
                                           self.init_flight_time)
+            self.traj_waypoints = trajGen.waypoints
+
+            trajectory = trajGen.spline  #init spline
+
+            trajPlanner = Globalplanner(trajectory, initial_obs, initial_info,
+                                        self.sampleRate)
+            trajPlanner.optimizer()
+            trajectory = trajPlanner.spline
+            self.gate_min_dist_knots = trajPlanner.gate_min_dist_knots
+
+        elif self.Planner_Type == "no_replan":
+            trajGen = TrajectoryGenerator(initial_obs, initial_info,
+                            self.sampleRate,
+                            self.init_flight_time)
             self.traj_waypoints = trajGen.waypoints
 
             trajectory = trajGen.spline  #init spline
@@ -538,21 +552,22 @@ class Controller():
             # then will make gate_id_now = current_gate_id so not triggered again
 
             # --------------------------Online replan block-------------
-            # if self.Planner_Type == "replan" and self.gate_id_now != current_gate_id:
-            #     trajLocalPlanner = OnlineLocalReplanner(
-            #         self.trajectory, self.sampleRate, current_gate_id,
-            #         true_gate_pose, obs, self.current_time-self.takeOffTime)
+            if self.Planner_Type == "replan" and self.gate_id_now != current_gate_id:
+                trajLocalPlanner = OnlineLocalReplanner(
+                    self.trajectory, self.sampleRate, current_gate_id,
+                    true_gate_pose, obs, self.current_time-self.takeOffTime, self.gate_min_dist_knots,
+                    self.NOMINAL_OBSTACLES)
 
-            #     self.trajectory = trajLocalPlanner.optimizer()
+                self.trajectory = trajLocalPlanner.optimizer()
 
-            #     self.gate_id_now = current_gate_id
-            #     timesteps = np.linspace(
-            #         0, self.flight_duration,
-            #         int(self.flight_duration * self.CTRL_FREQ))
+                self.gate_id_now = current_gate_id
+                timesteps = np.linspace(
+                    0, self.flight_duration,
+                    int(self.flight_duration * self.CTRL_FREQ))
 
-            #     self.p = self.trajectory(timesteps)
-            #     self.v = self.trajectory.derivative(1)(timesteps)
-            #     self.a = self.trajectory.derivative(2)(timesteps)
+                self.p = self.trajectory(timesteps)
+                self.v = self.trajectory.derivative(1)(timesteps)
+                self.a = self.trajectory.derivative(2)(timesteps)
 
         #########################
         # REPLACE THIS (END) ####

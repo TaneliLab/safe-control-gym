@@ -9,14 +9,14 @@ import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 VERBOSE = False
-VERBOSE_PLOT = True
+VERBOSE_PLOT = False
 VMAX = 6
 AMAX = 4
 LAMBDA_T = 10
 LAMBDA_GATES = 3000
 LAMBDA_V = 100
 LAMBDA_ACC = 1000
-LAMBDA_OBST = 1500
+LAMBDA_OBST = 2000  # 1500 before
 # LAMBDA_TURN = 0
 # LAMBDA_TURN_ANGLE = 0
 LAMBDA_HEADING = 1000
@@ -384,18 +384,18 @@ class Globalplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 0.5  # penalty on spline points smaller than threshold
+        threshold = 0.3  # penalty on spline points smaller than threshold
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
         knots = self.deltaT2knot(deltaT)
         key_knot = knots[5:-5]
         t_T = key_knot[-1]
-        dense_knot = np.linspace(0, t_T, 100)
+        dense_knot = np.linspace(0, t_T, 150)
         positions = spline(dense_knot)
 
         cost = 0
-
+        cost_temp = []
         # Iterate through obstacles
         for obst in self.NOMINAL_OBSTACLES:
             # print("positions[3]:", positions[:, 2])
@@ -404,7 +404,7 @@ class Globalplanner:
                 obst[0], obst[1],
                 self.initial_info['obstacle_dimensions']["height"]
             ]
-
+            
             # Compute distance between obstacle position and control point
             dist = positions[:, :2] - obst_pos[:2]
             # Norm of the distance
@@ -422,8 +422,8 @@ class Globalplanner:
             breached = dist[mask]
             # print("breached:", breached)
             # Cost as the difference between the threshold values and the summed breach of constraint
-            cost += (threshold * len(breached) - np.sum(breached))**2
-
+            cost_temp.append( (threshold * len(breached) - np.sum(breached))**2 ) 
+        cost = max(cost_temp)
         # 
         
         # also keep the start knot

@@ -9,20 +9,20 @@ import scipy.optimize as opt
 import math
 import matplotlib.pyplot as plt
 
-VERBOSE_PLOT = False
+VERBOSE_PLOT = True
 VMAX = 6
-AMAX = 4
+AMAX = 3
 LAMBDA_GATES = 4000
-LAMBDA_DRONE = 1000
+LAMBDA_DRONE = 2000
 LAMBDA_V = 0
 LAMBDA_ACC = 1000
 LAMBDA_HEADING = 1000
-
+LAMBDA_OBST = 4000
 # Say as failure case
 class OnlineLocalReplanner:
 
     def __init__(self, spline, sampleRate, current_gateID, current_gate_pos,
-                 obs, time):
+                 obs, time, gate_min_dist_knots, obstacles):
 
         # sampleRate: to get
         self.spline = spline
@@ -33,7 +33,7 @@ class OnlineLocalReplanner:
         self.current_gateID = current_gateID
         self.current_gate_pos = current_gate_pos
         self.sampleRate = sampleRate
-
+        self.obstacle = obstacles
         # optimize pipeline
         # self.x = spline.c
         # self.num_of_control_points = self.x.shape[0]
@@ -41,9 +41,10 @@ class OnlineLocalReplanner:
         self.x = self.coeffs.flatten()
         # self.len_control_coeffs = len(self.x)
         # # TODO: consider time? or just position
+        self.gate_min_dist_knots = gate_min_dist_knots
+
         self.coeffs_id_gate = self.gateID2controlPoint()
-        self.knot_id_gate = self.gateID2knot()
-        self.knot[self.knot_id_gate]
+        # self.knot_id_gate = self.gateID2knot()
 
         self.x = self.x[(self.coeffs_id_gate - 1) *
                         3:(self.coeffs_id_gate + 2) * 3]
@@ -54,23 +55,6 @@ class OnlineLocalReplanner:
         self.vmax = VMAX
         self.amax = AMAX
         print("self.knot:", self.knot)
-
-    def gateID2controlPoint(self):
-        if self.current_gateID >= 0:
-            coeffs_id = 3 + (self.current_gateID +
-                             1) * self.sampleRate  # coeffs_row_id of gate
-        else:
-            coeffs_id = 0
-        return coeffs_id
-
-    def gateID2knot(self):
-        if self.current_gateID >= 0:
-            knots_id = 5 + (self.current_gateID +                     ## !!!5 or 6 check
-                            1) * self.sampleRate  # knot_id of gate
-        else:
-            knots_id = 0
-        return knots_id
-
     # def hardGateSwitch(self):
     #     if self.current_gateID >= 0:
     #         coeffs_id = self.gateID2controlPoint()
@@ -79,6 +63,14 @@ class OnlineLocalReplanner:
     #         return spline
     #     else:
     #         return False
+        
+    def gateID2controlPoint(self):
+        if self.current_gateID >= 0:
+            coeffs_id = 2 + (self.current_gateID +
+                             1) * self.sampleRate  # coeffs_row_id of gate
+        else:
+            coeffs_id = 0
+        return coeffs_id
 
     def optimizer(self):
         # coeffs_id_gate = self.gateID2controlPoint()
@@ -156,6 +148,7 @@ class OnlineLocalReplanner:
         # cost += LAMBDA_V * self.velocityLimitCost(x, spline)
         cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
         cost += LAMBDA_DRONE * self.droneCost(x, spline)
+        cost += LAMBDA_OBST * self.obstacleCost_strict(x, spline)
         return cost
 
 
@@ -163,18 +156,8 @@ class OnlineLocalReplanner:
         # only for single gate point
         cost = 0
         dt = 0.1  # smaller more accuarate
+        gate_knot = self.gate_min_dist_knots[self.current_gateID]
 
-        # coeffs = self.unpackx(x)
-        # print("headingCost_local_coeffs:", coeffs)
-
-        local_idx = [
-            self.coeffs_id_gate - 1, self.coeffs_id_gate,
-            self.coeffs_id_gate + 1
-        ]
-
-        gate_knot = self.knot[self.knot_id_gate]
-
-        #  print("heading Cost key_knot:", key_knot)
         positions = spline(gate_knot)  # positions of control points
         before_gate_pos = spline(gate_knot - dt)  # :np.array
         after_gate_pos = spline(gate_knot + dt)
@@ -199,7 +182,8 @@ class OnlineLocalReplanner:
 
         cost = 0
         # coeffs = self.unpackx(x)
-        gate_knot = self.knot[self.knot_id_gate]
+        gate_knot = self.gate_min_dist_knots[self.current_gateID]
+
         dt = 0.1   # smaller more accurate
         local_gate_knot = np.linspace(gate_knot - dt, gate_knot + dt, 10)
         positions = spline(local_gate_knot)
@@ -215,6 +199,53 @@ class OnlineLocalReplanner:
         pos_drone = np.array(self.current_drone_pos)
         delta = np.linalg.norm(position - pos_drone)
         cost = np.min(delta)**2
+        return cost
+
+    def obstacleCost_strict(self, x, spline):
+        """Penalty for trajectories that are close to obstacles
+
+        Args:
+            x (array): opt vector
+
+        Returns:
+            cost (scalar): Obstacle penalty
+        """
+        threshold = 0.5  # penalty on spline points smaller than threshold
+        gate_knot = self.gate_min_dist_knots[self.current_gateID]
+        dt = 1  # larger to expand control region
+        local_gate_knot = np.linspace(gate_knot - dt, gate_knot + dt, 10)
+        positions = spline(local_gate_knot)
+
+        cost = 0
+
+        # Iterate through obstacles
+        for obst in self.obstacle:
+            # print("positions[3]:", positions[:, 2])
+            # print("positions[:2]:", positions[:, :2])
+            obst_pos = [obst[0], obst[1], 1.05  ]  # TODO: 1.05 is nominal height of obstacle
+
+            # Compute distance between obstacle position and control point
+            dist = positions[:, :2] - obst_pos[:2]
+            # Norm of the distance
+            dist = np.linalg.norm(dist, axis=1)
+
+            delta_height = positions[:, 2] - obst_pos[
+                2]  # how much higher than obstacle
+
+            # Select the ones below the threshold(dangerous)
+            mask_dist_unsafe = dist < threshold
+            mask_height_unsafe = delta_height < 0.1
+            mask = [
+                a and b for a, b in zip(mask_dist_unsafe, mask_height_unsafe)
+            ]
+            breached = dist[mask]
+            # print("breached:", breached)
+            # Cost as the difference between the threshold values and the summed breach of constraint
+            cost += (threshold * len(breached) - np.sum(breached))**2
+
+        # 
+        
+        # also keep the start knot
         return cost
 
     def velocityLimitCost(self, x, spline):
@@ -246,8 +277,8 @@ class OnlineLocalReplanner:
 
         # Get control points of velocity spline
         vals = spline.derivative(2)
-        gate_knot = self.knot[self.knot_id_gate]
-        dt = 0.6  # larger to expand control region
+        gate_knot = self.gate_min_dist_knots[self.current_gateID]
+        dt = 1  # larger to expand control region
         local_gate_knot = np.linspace(gate_knot - dt, gate_knot + dt, 10)
         velos = vals(local_gate_knot)
         # COmpute the squared norms
@@ -274,7 +305,7 @@ class OnlineLocalReplanner:
         axs[0].plot(time, p.T[0], label='opt_x')
         axs[0].plot(time, p_init.T[0], label='init_x')
         #  axs[0].scatter(self.opt_spline.t[3:-3], x_coeffs, label='control_x')
-        axs[0].scatter(self.opt_spline.t[self.knot_id_gate],
+        axs[0].scatter(self.gate_min_dist_knots[self.current_gateID],
                        self.current_gate_pos[0],
                        label='gate')
         axs[0].scatter(self.current_time,
@@ -283,7 +314,7 @@ class OnlineLocalReplanner:
         axs[0].legend()
         axs[1].plot(time, p.T[1], label='opt_y')
         axs[1].plot(time, p_init.T[1], label='init_y')
-        axs[1].scatter(self.opt_spline.t[self.knot_id_gate],
+        axs[1].scatter(self.gate_min_dist_knots[self.current_gateID],
                        self.current_gate_pos[1],
                        label='gate')
         axs[1].scatter(self.current_time,
@@ -292,7 +323,7 @@ class OnlineLocalReplanner:
         axs[1].legend()
         axs[2].plot(time, p.T[2], label='opt_z')
         axs[2].plot(time, p_init.T[2], label='init_z')
-        axs[2].scatter(self.opt_spline.t[self.knot_id_gate],
+        axs[2].scatter(self.gate_min_dist_knots[self.current_gateID],
                        self.current_gate_pos[2],
                        label='gate')
         axs[2].scatter(self.current_time,
