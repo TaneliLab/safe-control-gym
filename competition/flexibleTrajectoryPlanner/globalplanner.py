@@ -12,14 +12,17 @@ VERBOSE = False
 VERBOSE_PLOT = True
 VMAX = 6
 AMAX = 4
-LAMBDA_T = 5
-LAMBDA_GATES = 1000
+LAMBDA_T = 10
+LAMBDA_GATES = 3000
 LAMBDA_V = 100
-LAMBDA_ACC = 500
-LAMBDA_OBST = 1000
+LAMBDA_ACC = 1000
+LAMBDA_OBST = 1500
 # LAMBDA_TURN = 0
 # LAMBDA_TURN_ANGLE = 0
-LAMBDA_HEADING = 100
+LAMBDA_HEADING = 1000
+LAMBDA_INTERSECT = 3000
+LAMBDA_GATEOBST = 1500
+GATE_DT = 0.25
 
 # Gates properties: {'tall': {'shape': 'square', 'height': 1.0, 'edge': 0.45}, 'low': {'shape': 'square', 'height': 0.525, 'edge': 0.45}}
 # Obstacles properties: {'shape': 'cylinder', 'height': 1.05, 'radius': 0.05}
@@ -82,6 +85,8 @@ class Globalplanner:
         self.degree = 5
         self.optLim = 3
         self.optVars = self.x[self.optLim:-self.optLim]
+
+        self.gate_min_dist_knots = np.zeros(len(self.NOMINAL_GATES))
 
         # Only update selected coefficients
         self.valid_mask = "ONLYTIME"
@@ -241,9 +246,16 @@ class Globalplanner:
         # Iterate through waypoints
         for idx, w in enumerate(self.waypoints[1:-1]):
             # Compute the distance between the waypoint and the positions
-            delta = np.linalg.norm(positions - w, axis=1)*10 #small trick
+            delta = np.linalg.norm(positions - w, axis=1)*10  #small trick
             # Select the closest waypoint and penalize the distance
-            # print(idx, ", ", np.min(delta))
+            min_index = np.argmin(delta)
+            min_knot = dense_knot[min_index]
+
+            # record knot of passing the gate
+            # TODO: potential risk here: don't arrange order of passing gates
+            # There will be cases that passing gate2 gate1 gate4 gate3
+            self.gate_min_dist_knots[idx] = min_knot
+            delta = delta[min_index]
             cost += np.min(delta)**2
 
         return cost
@@ -256,8 +268,8 @@ class Globalplanner:
         key_knot = knots[5:-5]
 
         # only keep knot of the gate control points
-        gate_knot = key_knot[self.sampleRate:-1:self.sampleRate]
-
+        # gate_knot = key_knot[self.sampleRate:-1:self.sampleRate]
+        gate_knot = self.gate_min_dist_knots
         #  print("heading Cost key_knot:", key_knot)
         positions = spline(gate_knot)  # positions of control points
 
@@ -266,8 +278,9 @@ class Globalplanner:
             height = self.initial_info["gate_dimensions"]["tall"][
                 "height"] if g[6] == 0 else self.initial_info[
                     "gate_dimensions"]["low"]["height"]
-
-            dt_set = np.linspace(0.05, 0.8, 10)
+            
+            num_samples = 10
+            dt_set = np.linspace(0.02, GATE_DT, num_samples)
             for dt in dt_set:
                 # idx match to gate knot so we know position to gate
                 before_gate_pos = spline(gate_knot[idx] - dt)  # :np.array
@@ -279,7 +292,7 @@ class Globalplanner:
                     np.dot(d, N) / (np.linalg.norm(d) * np.linalg.norm(N)))
                 heading_angle_deg = abs(np.degrees(heading_angle_rad))
 
-                cost += heading_angle_deg
+                cost += heading_angle_deg/num_samples
 
         return cost
     
@@ -292,7 +305,8 @@ class Globalplanner:
 
         # only keep knot of the gate control points
         gate_knot = key_knot[self.sampleRate:-1:self.sampleRate]
-
+        gate_knot = self.gate_min_dist_knots
+        # print("init gate_knot:", gate_knot)
         #  print("heading Cost key_knot:", key_knot)
         positions = spline(gate_knot)  # positions of control points
 
@@ -305,7 +319,8 @@ class Globalplanner:
                     "gate_dimensions"]["low"]["height"]
 
             # idx match to gate knot so we know position to gate
-            dt_set = np.linspace(0.05, 0.8, 10)
+            num_samples = 10
+            dt_set = np.linspace(0.02, GATE_DT, num_samples)
             for dt in dt_set:
                 before_gate_pos = spline(gate_knot[idx] - dt)  # :np.array
                 after_gate_pos = spline(gate_knot[idx] + dt)
@@ -317,12 +332,11 @@ class Globalplanner:
 
                 intersection = before_gate_pos + inter * d
 
-                distance = np.linalg.norm(intersection - P0, axis=0)
+                distance = np.linalg.norm(intersection - P0, axis=0)*10
 
-                cost += distance**2
+                cost += distance**2/num_samples
 
         return cost
-
 
     def obstacleCost(self, x, spline):
         """Penalty for trajectories that are close to obstacles
@@ -370,15 +384,14 @@ class Globalplanner:
             cost (scalar): Obstacle penalty
         """
 
-        threshold = 0.3  # penalty on spline points smaller than threshold
+        threshold = 0.5  # penalty on spline points smaller than threshold
         # coeffs = np.reshape(x[:-1], (-1, 3))
         # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         coeffs, deltaT = self.unpackX2deltaT(x)
         knots = self.deltaT2knot(deltaT)
         key_knot = knots[5:-5]
-
         t_T = key_knot[-1]
-        dense_knot = np.linspace(0, t_T, 50)
+        dense_knot = np.linspace(0, t_T, 100)
         positions = spline(dense_knot)
 
         cost = 0
@@ -402,7 +415,7 @@ class Globalplanner:
             # print("delta_height：", delta_height)
             # Select the ones below the threshold(dangerous)
             mask_dist_unsafe = dist < threshold
-            mask_height_unsafe = delta_height < 0.08
+            mask_height_unsafe = delta_height < 0.1
             mask = [
                 a and b for a, b in zip(mask_dist_unsafe, mask_height_unsafe)
             ]
@@ -414,20 +427,40 @@ class Globalplanner:
         # 
         
         # also keep the start knot
-        gateknots = [6 + (idx) * self.sampleRate for idx in range( len(self.NOMINAL_GATES) + 1 )]  # 0 1 2 3
-        # print("gateknots:", gateknots)
-        dt = 0.5
-        risky_hit_gate_knots = np.array([])
+
+        if VERBOSE:
+            print("obstacle cost: ", cost)
+        return cost
+
+    def gate_obstacleCost(self, x, spline):
+
+        cost = 0
+        threshold = 0.2  # penalty on spline points smaller than threshold
+        # coeffs = np.reshape(x[:-1], (-1, 3))
+        # coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
+        coeffs, deltaT = self.unpackX2deltaT(x)
+        knots = self.deltaT2knot(deltaT)
+        key_knot = knots[5:-5]
+        t_T = key_knot[-1]
+        dense_knot = np.linspace(0, t_T, 200)
+
+        # dense_knot
+        risky_hit_gate_knots = copy.copy(dense_knot)
+        # print("flex gate knot:", self.gate_min_dist_knots)
         for idx in range(len(self.NOMINAL_GATES)):  # 0 1 2 3
-            start_t = knots[gateknots[idx]] + dt
-            end_t = knots[gateknots[idx+1]] - dt
-            assert start_t < end_t, "[error]obstacleCost_strict: dt for gate collision avoidance set to high!!"
-            risky_time = np.linspace(start_t, end_t, 20)
-            risky_hit_gate_knots = np.hstack((risky_hit_gate_knots, risky_time))
+            start_t = self.gate_min_dist_knots[idx] - GATE_DT -0.1
+            end_t = self.gate_min_dist_knots[idx] + GATE_DT + 0.1
+            # assert start_t > end_t, "[error]obstacleCost_strict: dt for gate collision avoidance set to high!!"
+            risky_hit_gate_knots = risky_hit_gate_knots[(risky_hit_gate_knots<start_t) | (risky_hit_gate_knots>end_t)]
+            assert len(risky_hit_gate_knots), "risky_hit_gate_knots has no member!"
         # print("risky_hit_gate_knots:", risky_hit_gate_knots)
         positions_risky = spline(risky_hit_gate_knots)
 
-        threshold = self.initial_info['gate_dimensions']['tall']['edge']/2 + 0.3
+        self.positions_risky_init = self.init_spline(risky_hit_gate_knots)
+        self.risky_hit_gate_knots = risky_hit_gate_knots
+        self.positions_risky = positions_risky
+        threshold = self.initial_info['gate_dimensions']['tall']['edge']/2 + 0.1
+
         for idx, g in enumerate(self.NOMINAL_GATES):
             
             # TODO: positions exclude the time when passing, they are kept safe by heading cost
@@ -440,7 +473,7 @@ class Globalplanner:
             dist = np.linalg.norm(positions_risky[:, :2] - obst_gate[:2], axis=1)
             delta_height = positions_risky[:, 2] - obst_gate[2]
             mask_dist_unsafe = dist < threshold
-            mask_hight_unsafe = delta_height <0.05
+            mask_hight_unsafe = delta_height < self.initial_info['gate_dimensions']['tall']['edge']/2 + 0.05
 
             mask = [
                 a and b for a, b in zip(mask_dist_unsafe, mask_hight_unsafe)
@@ -451,10 +484,8 @@ class Globalplanner:
             # Cost as the difference between the threshold values and the summed breach of constraint
             cost += (threshold * len(breached) - np.sum(breached))**2
 
-        if VERBOSE:
-            print("obstacle cost: ", cost)
         return cost
-
+    
     def TimeCost(self, x, spline):
         cost = 0
         # deltaT = x[self.len_control_coeffs:]
@@ -588,8 +619,8 @@ class Globalplanner:
         cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
         cost += LAMBDA_OBST * self.obstacleCost_strict(x, spline)
         cost += LAMBDA_HEADING * self.headingCost(x, spline)
-        cost += LAMBDA_HEADING * self.intersectCost(x, spline)
-
+        cost += LAMBDA_INTERSECT * self.intersectCost(x, spline)
+        cost += LAMBDA_GATEOBST * self.gate_obstacleCost(x, spline)
         # Performance Cost
         cost += LAMBDA_T * self.TimeCost(x, spline)
 
@@ -674,7 +705,7 @@ class Globalplanner:
             #    method='SLSQP', # try different method
             method='SLSQP',
             jac=self.numeric_jacobian,
-            tol=1e-10)
+            tol=1e-5)  #1e-10
 
         # self.x = res.x
         x = res.x
@@ -803,7 +834,9 @@ class Globalplanner:
         ax.plot(p_init.T[0], p_init.T[1], p_init.T[2], label='Init_Traj')
         ax.plot(p.T[0], p.T[1], p.T[2], label='Opt_Traj')
 
-        ax.plot(coeffs[:, 0], coeffs[:, 1], coeffs[:, 2], '*', label='control')
+        # ax.plot(coeffs[:, 0], coeffs[:, 1], coeffs[:, 2], '*', label='control')
+        ax.scatter(self.positions_risky.T[0], self.positions_risky.T[1], self.positions_risky.T[2], label='risky')
+        # ax.scatter(self.positions_risky_init.T[0], self.positions_risky_init.T[1], self.positions_risky_init.T[2], label='risky_init')
 
         ax.plot(self.waypoints.T[0],
                 self.waypoints.T[1],

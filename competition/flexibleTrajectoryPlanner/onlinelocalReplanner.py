@@ -65,7 +65,7 @@ class OnlineLocalReplanner:
 
     def gateID2knot(self):
         if self.current_gateID >= 0:
-            knots_id = 6 + (self.current_gateID +
+            knots_id = 5 + (self.current_gateID +                     ## !!!5 or 6 check
                             1) * self.sampleRate  # knot_id of gate
         else:
             knots_id = 0
