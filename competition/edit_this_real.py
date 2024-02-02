@@ -128,7 +128,7 @@ class Controller():
         self.LC_Module = True
         self.Planner_Type = "no_replan"   #"no_replan", "replan", "only_init"
         self.sampleRate = 3
-        self.init_flight_time = 14  # 10 with AMAX=8 infeasible
+        self.init_flight_time = 12  # 10 with AMAX=8 infeasible
 
         self.gate_id_now = -99
         self.takeoffFlag = False

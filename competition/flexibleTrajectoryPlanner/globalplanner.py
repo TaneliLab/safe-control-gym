@@ -8,22 +8,45 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
 VERBOSE = False
 VERBOSE_PLOT = True
+
+################ Hard scenrios hypers Start###################
+# T = 14  SampleRate=3
+# VMAX = 6
+# AMAX = 4
+# LAMBDA_T = 10
+# LAMBDA_GATES = 3000
+# LAMBDA_V = 100
+# LAMBDA_ACC = 1000
+# LAMBDA_OBST = 2000  # 1500 before
+# # LAMBDA_TURN = 0
+# # LAMBDA_TURN_ANGLE = 0
+# LAMBDA_HEADING = 1500
+# LAMBDA_INTERSECT = 3000
+# LAMBDA_GATEOBST = 1500
+# GATE_DT = 0.25
+
+############# Hard scenrios hypers End################
+
+############# Standard Hyper Start ##################
+# T = 12 , SampleRate = 3
 VMAX = 6
 AMAX = 4
 LAMBDA_T = 10
 LAMBDA_GATES = 3000
 LAMBDA_V = 100
 LAMBDA_ACC = 1000
-LAMBDA_OBST = 2000  # 1500 before
+LAMBDA_OBST = 3000  # 1500 before
 # LAMBDA_TURN = 0
 # LAMBDA_TURN_ANGLE = 0
-LAMBDA_HEADING = 1500
+LAMBDA_HEADING = 500
 LAMBDA_INTERSECT = 3000
 LAMBDA_GATEOBST = 1500
-GATE_DT = 0.25
+GATE_DT = 0.1
+############# Standard Hyper End ##################
 
 # Gates properties: {'tall': {'shape': 'square', 'height': 1.0, 'edge': 0.45}, 'low': {'shape': 'square', 'height': 0.525, 'edge': 0.45}}
 # Obstacles properties: {'shape': 'cylinder', 'height': 1.05, 'radius': 0.05}
@@ -67,12 +90,12 @@ class Globalplanner:
 
         self.initial_obs = initial_obs
         self.initial_info = initial_info
-        HEIGHT_TALL_GATE = initial_info["gate_dimensions"]["tall"]["height"]
-        HEIGHT_LOW_GATE = initial_info["gate_dimensions"]["low"]["height"]
+        self.tall_gate_height = initial_info["gate_dimensions"]["tall"]["height"]
+        self.low_gate_height = initial_info["gate_dimensions"]["low"]["height"]
 
         self.NOMINAL_GATES = initial_info["nominal_gates_pos_and_type"]
         self.NOMINAL_OBSTACLES = initial_info["nominal_obstacles_pos"]
-        self.start = (initial_obs[0], initial_obs[2], HEIGHT_TALL_GATE)
+        self.start = (initial_obs[0], initial_obs[2], self.tall_gate_height)
         self.goal = (initial_info["x_reference"][0],
                      initial_info["x_reference"][2],
                      initial_info["x_reference"][4])
@@ -275,9 +298,6 @@ class Globalplanner:
 
         for idx, g in enumerate(self.NOMINAL_GATES):
             # dt = 0.8
-            height = self.initial_info["gate_dimensions"]["tall"][
-                "height"] if g[6] == 0 else self.initial_info[
-                    "gate_dimensions"]["low"]["height"]
 
             num_samples = 10
             dt_set = np.linspace(0.02, GATE_DT, num_samples)
@@ -785,6 +805,45 @@ class Globalplanner:
         self.coeffs = coeffs_opt
         self.spline = self.opt_spline
 
+    def get_gate8(self):
+        edge = self.initial_info['gate_dimensions']['tall']['edge']/2
+        Vertices = []
+        Sides = []
+        for idx, g in enumerate(self.NOMINAL_GATES):
+
+            gate_height = self.initial_info["gate_dimensions"]["tall"][
+                "height"] if g[6] == 0 else self.initial_info[
+                    "gate_dimensions"]["low"]["height"]
+            N = np.array([-np.sin(g[5]), np.cos(g[5]), 0])
+            N_ = np.array([np.cos(g[5]), np.sin(g[5]), 0])
+
+            d_h = [edge*N_[0], edge*N_[1]]
+            d_v = [0.05*N[0], 0.05*N[1]]
+            center = [g[0], g[1], gate_height]
+            vertices = np.array([
+                        [center[0]-d_h[0]-d_v[0], center[1]-d_h[1]-d_v[1], gate_height-edge],  # Point 0
+                        [center[0]+d_h[0]-d_v[0], center[1]+d_h[1]-d_v[1], gate_height-edge],  # Point 1
+                        [center[0]+d_h[0]+d_v[0], center[1]+d_h[1]+d_v[1], gate_height-edge],  # Point 2
+                        [center[0]-d_h[0]+d_v[0], center[1]-d_h[1]+d_v[1], gate_height-edge],  # Point 3
+                        
+                        [center[0]-d_h[0]-d_v[0], center[1]-d_h[1]-d_v[1], gate_height+edge],  # Point 4
+                        [center[0]+d_h[0]-d_v[0], center[1]+d_h[1]-d_v[1], gate_height+edge],  # Point 5
+                        [center[0]+d_h[0]+d_v[0], center[1]+d_h[1]+d_v[1], gate_height+edge],  # Point 6
+                        [center[0]-d_h[0]+d_v[0], center[1]-d_h[1]+d_v[1], gate_height+edge]   # Point 7
+                    ])
+
+            sides = [
+                    [vertices[0], vertices[1], vertices[2], vertices[3]],  # Bottom
+                    [vertices[4], vertices[5], vertices[6], vertices[7]],  # Top
+                    [vertices[0], vertices[3], vertices[7], vertices[4]],  # Side 1
+                    [vertices[1], vertices[2], vertices[6], vertices[5]],  # Side 2
+                    [vertices[0], vertices[1], vertices[5], vertices[4]],  # Side 3
+                    [vertices[2], vertices[3], vertices[7], vertices[6]]   # Side 4
+                    ]
+            Vertices.append(vertices)
+            Sides.append(sides)
+        return Sides
+
     def plot_xyz(self):
         """Plot the xyz trajectory
         """
@@ -833,7 +892,8 @@ class Globalplanner:
         """Plot the 3d trajectory
         """
         coeffs = self.opt_spline.c
-        ax = plt.figure().add_subplot(projection='3d')
+        fig = plt.figure(dpi=300)
+        ax = fig.add_subplot(projection='3d')
 
         test = self.t * np.linspace(0, 1, 100)
         init_time = self.init_t * np.linspace(0, 1, 100)
@@ -874,6 +934,15 @@ class Globalplanner:
             y = obst_y + radius * np.sin(theta)
             ax.plot_surface(x, y, z, alpha=0.5, color='b')
 
+        Sides = self.get_gate8()
+        for idx, g in enumerate(self.NOMINAL_GATES):
+            # Plot the sides
+            # Plot each side
+            sides = Sides[idx]
+            for s in sides:
+                ax.add_collection3d(Poly3DCollection([s], facecolors='cyan', linewidths=1, edgecolors='r', alpha=.25))
+
+        ax.set_aspect('auto')
         ax.legend()
         plt.savefig("./plan_data/global_3D_plan.jpg")
         plt.show()
