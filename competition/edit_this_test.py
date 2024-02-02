@@ -141,13 +141,13 @@ class Controller():
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
         t_scaled = timesteps
-        w = 1.3
+        w = 1.5
         # # ---------------testing with simple trajectories -------------
         self.ref_x = np.sin(w*timesteps) + self.initial_obs[0]
         self.ref_y = np.cos(w*timesteps) - 1 + self.initial_obs[2]
         # constant height
         # self.ref_z = np.array([self.onflyHeight for ii in range(len(timesteps))])
-        self.ref_z = 0.2*np.sin(w*timesteps) + self.onflyHeight 
+        self.ref_z = 0.2*np.sin(2.5*w*timesteps) + self.onflyHeight 
         
         self.ref_vx = np.diff(self.ref_x) * self.CTRL_FREQ
         self.ref_vx = np.insert(self.ref_vx, 0, 0)
@@ -417,7 +417,7 @@ class Controller():
         self.done_buffer.append(done)
         self.info_buffer.append(info)
         pos_command = list(args[0])
-        self.acc_ff = list(args[2])
+        self.acc_ff_init = list(args[2])
         self.ref_buffer.append(pos_command)
         #########################
         # REPLACE THIS (START) ##
@@ -430,14 +430,15 @@ class Controller():
             # self.acc_ff[2] = rls_kernel.update(self.acc_ff[2], observation, desired_output)
 
             # 3 dim case
-            rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=3)
+            rls_kernel = KernelRecursiveLeastSquaresMultiDim(num_dims=3, num_taps=60, delta=0.01, lambda_=0.99, kernel='poly', poly_c=1, poly_d=5)
             observation = [self.obs_buffer[-1][0],  self.obs_buffer[-1][2], self.obs_buffer[-1][4]]
             desired_output = [self.ref_buffer[-1][0], self.ref_buffer[-1][1], self.ref_buffer[-1][2]]
-            self.acc_ff = rls_kernel.update(self.acc_ff, observation, desired_output)
+            self.acc_ff = rls_kernel.update(self.acc_ff_init, observation, desired_output)
             # print("acc_ff:", self.acc_ff)
         #########################
         # REPLACE THIS (END) ####
         #########################
+        return self.acc_ff
 
     @timing_ep
     def interEpisodeLearn(self):

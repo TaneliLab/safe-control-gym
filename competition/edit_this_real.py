@@ -491,7 +491,7 @@ class Controller():
         self.done_buffer.append(done)
         self.info_buffer.append(info)
         pos_command = list(args[0])
-        self.acc_ff = list(args[2])  # current acc command
+        self.acc_ff_init = list(args[2])  # current acc command
         self.ref_buffer.append(pos_command)
         #########################
         # REPLACE THIS (START) ##
@@ -521,7 +521,7 @@ class Controller():
                 self.ref_buffer[-1][0], self.ref_buffer[-1][1],
                 self.ref_buffer[-1][2]
             ]
-            self.acc_ff = rls_kernel.update(self.acc_ff, observation,
+            self.acc_ff = rls_kernel.update(self.acc_ff_init, observation,
                                             desired_output)
             # print("acc_ff:", self.acc_ff)
         
@@ -568,7 +568,8 @@ class Controller():
                 self.p = self.trajectory(timesteps)
                 self.v = self.trajectory.derivative(1)(timesteps)
                 self.a = self.trajectory.derivative(2)(timesteps)
-
+        
+        return self.acc_ff
         #########################
         # REPLACE THIS (END) ####
         #########################

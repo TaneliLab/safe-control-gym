@@ -155,6 +155,7 @@ def run(test=False):
     onfly_obs_x = []
     onfly_obs_y = []
     onfly_obs_z = []
+    onfly_acc_init = []
     onfly_acc = []
     for i in range(config.num_episodes*CTRL_FREQ*env.EPISODE_LEN_SEC):
 
@@ -175,7 +176,7 @@ def run(test=False):
                                            replaceItemUniqueId=time_label_id,
                                            physicsClientId=env.PYB_CLIENT)
         # Skip some iteration
-        if(i % 3 ==0):
+        if(i % 1 ==0):
             # Compute control input.
             if config.use_firmware:
                 vicon_obs = [obs[0], 0, obs[2], 0, obs[4], 0, obs[6], obs[7], obs[8], 0, 0, 0]
@@ -237,8 +238,8 @@ def run(test=False):
             onfly_ref_y.append(pos_command[1])
             onfly_ref_z.append(pos_command[2])
             acc_command = args[2]
-            onfly_acc.append(acc_command)
-            ctrl.interStepLearn(args, action, obs, reward, done, info)
+            onfly_acc_init.append(acc_command)
+            onfly_acc.append(ctrl.interStepLearn(args, action, obs, reward, done, info))
         # else:
         #     print("command_type:", command_type)
         # Add up reward, collisions, violations.
@@ -299,9 +300,9 @@ def run(test=False):
             # TODO: Bestway? or plot by a log function
             plot_real_trajectory(onfly_time, onfly_ref_x, onfly_ref_y, onfly_ref_z, 
                         onfly_obs_x, onfly_obs_y, onfly_obs_z,
-                        onfly_acc)
+                        onfly_acc_init, onfly_acc)
             onfly_time, onfly_obs_x, onfly_obs_y, onfly_obs_z = [], [], [], []
-            onfly_ref_x, onfly_ref_y, onfly_ref_z, onfly_acc = [], [], [], []
+            onfly_ref_x, onfly_ref_y, onfly_ref_z, onfly_acc, onfly_acc_init = [], [], [], [], []
 
             # Plot logging (comment as desired).
             if not test:
