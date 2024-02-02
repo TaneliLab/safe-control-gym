@@ -317,38 +317,53 @@ def plot_real_trajectory(t_scaled,
                     obs_x,
                     obs_y,
                     obs_z,
+                    acc_init,
                     acc
                     ):
     """Plot the trajectory with matplotlib.
 
     """
 
-    acc_x = [a_x[0] for a_x in acc]
-    acc_y = [a_x[1] for a_x in acc]
-    acc_z = [a_x[2] for a_x in acc]
+    acc_x = np.array([a_x[0] for a_x in acc])
+    acc_y = np.array([a_x[1] for a_x in acc])
+    acc_z = np.array([a_x[2] for a_x in acc])
+
+    acc_x_init = np.array([a[0] for a in acc_init])
+    acc_y_init = np.array([a[1] for a in acc_init])
+    acc_z_init = np.array([a[2] for a in acc_init])
+
+    
     # Plot each dimension.
-    _, axs = plt.subplots(4, 1)
+    _, axs = plt.subplots(4, 1, figsize=(9, 12))  # 
     axs[0].plot(t_scaled, obs_x, label='obs_x')
     axs[0].plot(t_scaled, ref_x, label='ref_x')
-    axs[0].set_ylabel('x (m)')
-    axs[0].legend()
+    axs[0].set_ylabel('x (m)', fontsize=12)
+    axs[0].set_xlabel('time (s)', fontsize=12)
+    axs[0].legend(loc='lower right', fontsize=13)
+
     axs[1].plot(t_scaled, obs_y, label='obs_y')
     axs[1].plot(t_scaled, ref_y, label='ref_y')
-    axs[1].set_ylabel('y (m)')
-    axs[1].legend()
+    axs[1].set_ylabel('y (m)', fontsize=12)
+    axs[1].set_xlabel('time (s)', fontsize=12)
+    axs[1].legend(loc='lower right', fontsize=13)
+
     axs[2].plot(t_scaled, obs_z, label='obs_z')
     axs[2].plot(t_scaled, ref_z, label='ref_z')
-    axs[2].set_ylabel('z (m)')
-    axs[2].legend()
-    axs[3].plot(t_scaled, acc_x, label='acc_x')
-    axs[3].plot(t_scaled, acc_y, label='acc_y')
-    axs[3].plot(t_scaled, acc_z, label='acc_z')
-    axs[3].set_ylabel('acc (m/s-2)')
-    axs[3].legend()
+    axs[2].set_ylabel('z (m)', fontsize=12)
+    axs[3].set_xlabel('time (s)', fontsize=12)
+    axs[2].legend(loc='lower right', fontsize=13)
+
+    axs[3].plot(t_scaled, acc_x-acc_x_init, label='delta_acc_x')
+    axs[3].plot(t_scaled, acc_y-acc_y_init, label='delta_acc_y')
+    axs[3].plot(t_scaled, acc_z-acc_z_init, label='delta_acc_z')
+    axs[3].set_ylabel('acc (m/s-2)', fontsize=12)
+    axs[3].set_xlabel('time (s)', fontsize=12)
+    axs[3].legend(loc='lower right', fontsize=13)
     plt.show(block=False)
     plt.savefig("results/refvsobs_xyz.png")
     plt.pause(2)
     plt.close()
+
 
     # Plot in 3D.
     ax = plt.axes(projection='3d')
