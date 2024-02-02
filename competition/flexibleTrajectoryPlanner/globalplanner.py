@@ -824,7 +824,10 @@ class Globalplanner:
                        z_coeffs,
                        label='control_opt_z')
         axs[2].legend()
+        plt.savefig("./plan_data/global_xyz_plan.jpg")
         plt.show()
+        plt.pause(2)
+        plt.close()
 
     def plot(self):
         """Plot the 3d trajectory
@@ -874,6 +877,8 @@ class Globalplanner:
         ax.legend()
         plt.savefig("./plan_data/global_3D_plan.jpg")
         plt.show()
+        plt.pause(2)
+        plt.close()
 
     # def TurningCost_OnlyAngle(self, x, spline):
     #     cost = 0
