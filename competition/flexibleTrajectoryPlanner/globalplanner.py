@@ -416,6 +416,8 @@ class Globalplanner:
 
         cost = 0
         cost_temp = []
+        if len(self.NOMINAL_OBSTACLES) == 0:
+            return 0
         # Iterate through obstacles
         for obst in self.NOMINAL_OBSTACLES:
             # print("positions[3]:", positions[:, 2])
@@ -884,7 +886,7 @@ class Globalplanner:
                        label='control_opt_z')
         axs[2].legend()
         plt.savefig("./plan_data/global_xyz_plan.jpg")
-        plt.show()
+        plt.show(block=False)
         plt.pause(2)
         plt.close()
 
@@ -945,7 +947,7 @@ class Globalplanner:
         ax.set_aspect('auto')
         ax.legend()
         plt.savefig("./plan_data/global_3D_plan.jpg")
-        plt.show()
+        plt.show(block=False)
         plt.pause(2)
         plt.close()
 
