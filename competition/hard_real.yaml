@@ -121,16 +121,16 @@ quadrotor_config:
       high: 0.000001
 
   # Randomization of the gates and obstacles positions
-  # randomized_gates_and_obstacles: True
-  # gates_and_obstacles_randomization_info:
-  #   gates:
-  #     distrib: "uniform"
-  #     low: -0.1
-  #     high: 0.1
-  #   obstacles:
-  #     distrib: "uniform"
-  #     low: -0.1
-  #     high: 0.1
+  randomized_gates_and_obstacles: True
+  gates_and_obstacles_randomization_info:
+    gates:
+      distrib: "uniform"
+      low: -0.1
+      high: 0.1
+    obstacles:
+      distrib: "uniform"
+      low: -0.1
+      high: 0.1
 
   # Constraints
   constraints:
