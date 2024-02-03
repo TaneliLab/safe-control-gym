@@ -176,7 +176,7 @@ def run(test=False):
                                            replaceItemUniqueId=time_label_id,
                                            physicsClientId=env.PYB_CLIENT)
         # Skip some iteration
-        if(i % 1 ==0):
+        if(i % 4 ==0):
             # Compute control input.
             if config.use_firmware:
                 vicon_obs = [obs[0], 0, obs[2], 0, obs[4], 0, obs[6], obs[7], obs[8], 0, 0, 0]

@@ -126,7 +126,7 @@ class Controller():
         
         # hyperparmeters 
         self.LC_Module = True
-        self.Planner_Type = "no_replan"   #"no_replan", "replan", "only_init"
+        self.Planner_Type = "replan"   #"no_replan", "replan", "only_init"
         self.sampleRate = 3
         self.init_flight_time = 12  # 10 with AMAX=8 infeasible
 
@@ -206,7 +206,11 @@ class Controller():
                                         self.sampleRate)
             trajPlanner.optimizer()
             trajectory = trajPlanner.spline
+            self.global_trajectory = copy.copy(trajectory)
             self.gate_min_dist_knots = trajPlanner.gate_min_dist_knots
+            self.drone_obs_stack = np.array([])
+            self.gate_pos_stack = np.array([])
+            self.current_time_stack = []
 
         elif self.Planner_Type == "no_replan":
             trajGen = TrajectoryGenerator(initial_obs, initial_info,
@@ -553,11 +557,26 @@ class Controller():
 
             # --------------------------Online replan block-------------
             if self.Planner_Type == "replan" and self.gate_id_now != current_gate_id:
-                trajLocalPlanner = OnlineLocalReplanner(
-                    self.trajectory, self.sampleRate, current_gate_id,
-                    true_gate_pose, obs, self.current_time-self.takeOffTime, self.gate_min_dist_knots,
-                    self.NOMINAL_OBSTACLES)
-
+                
+                self.drone_obs_stack = obs if len(self.drone_obs_stack)==0 else np.vstack((self.drone_obs_stack, obs))
+                self.gate_pos_stack = true_gate_pose if len(self.gate_pos_stack)==0 else np.vstack((self.gate_pos_stack, true_gate_pose))
+                print("self.drone_obs_stack:", self.drone_obs_stack)
+                print("self.gate_pos_stack:", self.gate_pos_stack)
+                print("gate_idnow:", self.gate_id_now)
+                self.current_time_stack.append(self.current_time-self.takeOffTime)
+                info_local = {"trajectory":self.trajectory, "global_trajectory":self.global_trajectory, 
+                              "sampleRate":self.sampleRate, "current_gate_id":current_gate_id, 
+                              "current_gate_pose_true":true_gate_pose, "current_drone_state":obs, 
+                              "gate_pose_stack":self.gate_pos_stack, "drone_obs_stack":self.drone_obs_stack,
+                              "current_flight_time":self.current_time-self.takeOffTime, 
+                              "current_flight_time_stack": self.current_time_stack,
+                              "gate_min_dist_knots": self.gate_min_dist_knots, "nominal_obstacles":self.NOMINAL_OBSTACLES,
+                              "last_verbose": current_gate_id==len(self.NOMINAL_GATES)-1}
+                # trajLocalPlanner = OnlineLocalReplanner(
+                #     self.trajectory, self.sampleRate, current_gate_id,
+                #     true_gate_pose, obs, self.current_time-self.takeOffTime, self.gate_min_dist_knots,
+                #     self.NOMINAL_OBSTACLES, self.global_trajectory)
+                trajLocalPlanner = OnlineLocalReplanner(info_local)
                 self.trajectory = trajLocalPlanner.optimizer()
 
                 self.gate_id_now = current_gate_id

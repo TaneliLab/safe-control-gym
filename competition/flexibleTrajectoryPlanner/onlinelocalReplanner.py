@@ -11,29 +11,33 @@ import matplotlib.pyplot as plt
 
 VERBOSE_PLOT = True
 VMAX = 6
-AMAX = 3
+AMAX = 2  # 3 is risky in simple but works in hard and standard
 LAMBDA_GATES = 4000
 LAMBDA_DRONE = 2000
-LAMBDA_V = 0
-LAMBDA_ACC = 1000
+LAMBDA_V = 0 #0
+LAMBDA_ACC = 1000  # 1000
 LAMBDA_HEADING = 1000
 LAMBDA_OBST = 4000
 # Say as failure case
+
+# spline, sampleRate, current_gateID, current_gate_pos,
+#                  obs, time, gate_min_dist_knots, obstacles, global_spline
+
 class OnlineLocalReplanner:
 
-    def __init__(self, spline, sampleRate, current_gateID, current_gate_pos,
-                 obs, time, gate_min_dist_knots, obstacles):
+    def __init__(self, info_local):
 
         # sampleRate: to get
-        self.spline = spline
-        self.coeffs = spline.c
-        self.knot = spline.t
-        self.t = self.knot[-1]
+        self.global_spline = info_local["global_trajectory"]
+        self.spline = info_local["trajectory"]
+        self.coeffs = self.spline.c
+        self.knot = self.spline.t
+        self.t = self.knot[-1]  # current global spline
         self.degree = 5
-        self.current_gateID = current_gateID
-        self.current_gate_pos = current_gate_pos
-        self.sampleRate = sampleRate
-        self.obstacle = obstacles
+        self.current_gateID = info_local["current_gate_id"]
+        self.current_gate_pos = info_local["current_gate_pose_true"]
+        self.sampleRate = info_local["sampleRate"]
+        self.obstacle = info_local["nominal_obstacles"]
         # optimize pipeline
         # self.x = spline.c
         # self.num_of_control_points = self.x.shape[0]
@@ -41,7 +45,7 @@ class OnlineLocalReplanner:
         self.x = self.coeffs.flatten()
         # self.len_control_coeffs = len(self.x)
         # # TODO: consider time? or just position
-        self.gate_min_dist_knots = gate_min_dist_knots
+        self.gate_min_dist_knots = info_local["gate_min_dist_knots"]
 
         self.coeffs_id_gate = self.gateID2controlPoint()
         # self.knot_id_gate = self.gateID2knot()
@@ -49,9 +53,14 @@ class OnlineLocalReplanner:
         self.x = self.x[(self.coeffs_id_gate - 1) *
                         3:(self.coeffs_id_gate + 2) * 3]
 
-        self.current_gate_pos = current_gate_pos
+        self.current_gate_pos = info_local["current_gate_pose_true"]
+        obs = info_local["current_drone_state"]
         self.current_drone_pos = [obs[0], obs[2], obs[4]]
-        self.current_time = time
+        self.current_time = info_local["current_flight_time"]
+        self.drone_obs_stack = info_local["drone_obs_stack"]
+        self.gate_pos_stack = info_local["gate_pose_stack"]
+        self.current_flight_time_stack = info_local["current_flight_time_stack"]
+        self.last_verbose = info_local["last_verbose"]
         self.vmax = VMAX
         self.amax = AMAX
         print("self.knot:", self.knot)
@@ -98,8 +107,10 @@ class OnlineLocalReplanner:
         self.opt_spline = interpol.BSpline(knots_opt, coeffs_opt, self.degree)
 
         if VERBOSE_PLOT:
-            self.plot_xyz()
-            self.plot()
+            self.plot_xyz_check()
+            if self.last_verbose:
+                self.plot_xyz()
+            # self.plot()
         return self.opt_spline
 
     def unpackx(self, x):
@@ -292,6 +303,56 @@ class OnlineLocalReplanner:
         return cost
 
     def plot_xyz(self):
+        _, axs = plt.subplots(3, 1, figsize=(15, 8))
+        time = self.t * np.linspace(0, 1, 100)
+        coeffs = self.opt_spline.c
+        knots = self.opt_spline.t
+        x_coeffs = coeffs[:, 0]
+        y_coeffs = coeffs[:, 1]
+        z_coeffs = coeffs[:, 2]
+
+        drone_x = self.drone_obs_stack[:, 0]
+        drone_y = self.drone_obs_stack[:, 2]
+        drone_z = self.drone_obs_stack[:, 4]
+
+        true_gate_x = self.gate_pos_stack[:,0]
+        true_gate_y = self.gate_pos_stack[:,1]
+        true_gate_z = self.gate_pos_stack[:,2]
+
+        p = self.opt_spline(time)
+        p_init = self.global_spline(time)
+        axs[0].plot(time, p.T[0], label='local_plan_x')
+        axs[0].plot(time, p_init.T[0], label='global_plan_x')
+        #  axs[0].scatter(self.opt_spline.t[3:-3], x_coeffs, label='control_x')
+        axs[0].scatter(self.gate_min_dist_knots,
+                       true_gate_x,marker='o',s=70,
+                       label='gate')
+        axs[0].scatter(self.current_flight_time_stack,
+                       drone_x, marker='*',s=70,
+                       label='drone')
+        axs[0].legend()
+        axs[1].plot(time, p.T[1], label='local_plan_y')
+        axs[1].plot(time, p_init.T[1], label='global_plan_y')
+        axs[1].scatter(self.gate_min_dist_knots,
+                       true_gate_y,marker='o',s=70,
+                       label='gate')
+        axs[1].scatter(self.current_flight_time_stack,
+                       drone_y, marker='*',s=70,
+                       label='drone')
+        axs[1].legend()
+        axs[2].plot(time, p.T[2], label='local_plan_z')
+        axs[2].plot(time, p_init.T[2], label='global_plan_z')
+        axs[2].scatter(self.gate_min_dist_knots,
+                       true_gate_z,marker='o',s=70,
+                       label='gate')
+        axs[2].scatter(self.current_flight_time_stack,
+                       drone_z, marker='*',s=70,
+                       label='drone')
+        axs[2].legend()
+        plt.savefig("./online_plan_data/global_vs_local_xyz.png")
+        plt.show()
+
+    def plot_xyz_check(self):
         _, axs = plt.subplots(3, 1)
         time = self.t * np.linspace(0, 1, 100)
         coeffs = self.opt_spline.c
@@ -301,15 +362,15 @@ class OnlineLocalReplanner:
         z_coeffs = coeffs[:, 2]
 
         p = self.opt_spline(time)
-        p_init = self.spline(time)
+        p_init = self.global_spline(time)
         axs[0].plot(time, p.T[0], label='opt_x')
         axs[0].plot(time, p_init.T[0], label='init_x')
         #  axs[0].scatter(self.opt_spline.t[3:-3], x_coeffs, label='control_x')
         axs[0].scatter(self.gate_min_dist_knots[self.current_gateID],
-                       self.current_gate_pos[0],
+                       self.current_gate_pos[0],marker='o',s=20,
                        label='gate')
         axs[0].scatter(self.current_time,
-                       self.current_drone_pos[0],
+                       self.current_drone_pos[0], marker='*',s=20,
                        label='drone')
         axs[0].legend()
         axs[1].plot(time, p.T[1], label='opt_y')
@@ -318,7 +379,7 @@ class OnlineLocalReplanner:
                        self.current_gate_pos[1],
                        label='gate')
         axs[1].scatter(self.current_time,
-                       self.current_drone_pos[1],
+                       self.current_drone_pos[1], marker='*',s=20,
                        label='drone')
         axs[1].legend()
         axs[2].plot(time, p.T[2], label='opt_z')
@@ -330,15 +391,19 @@ class OnlineLocalReplanner:
                        self.current_drone_pos[2],
                        label='drone')
         axs[2].legend()
-        plt.show()
+        # plt.savefig("./online_plan_data/global_vs_local_xyz.png")
+        plt.show(block=False)
+        plt.pause(1)
+        plt.close()
 
     def plot(self):
         """Plot the 3d trajectory
         """
-        ax = plt.figure().add_subplot(projection='3d')
+        figure = plt.figure(dpi=150)
+        ax = figure.add_subplot(projection='3d')
         time = self.t * np.linspace(0, 1, 100)
         p = self.opt_spline(time)
-        p_init = self.spline(time)
+        p_init = self.global_spline(time)
 
         ax.grid(False)
         ax.plot(p_init.T[0], p_init.T[1], p_init.T[2], label='Init_Traj')
@@ -350,6 +415,7 @@ class OnlineLocalReplanner:
                 'o',
                 label='gate')
         ax.legend()
+        plt.savefig("./online_plan_data/global_vs_local_3d.png")
         plt.show()
 
 if __name__ == "__main__":
