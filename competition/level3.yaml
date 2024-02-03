@@ -5,7 +5,7 @@
 # | `level3.yaml`       | **Yes**      | **Yes**                   | **Yes**                     | **Yes**                | Robustness        |
 
 # Configuration
-num_episodes: 1 # Customizable number of episodes (NOTE: solutions that require fewer episode will receive higher scores)
+num_episodes: 10 # Customizable number of episodes (NOTE: solutions that require fewer episode will receive higher scores)
 use_firmware: True # Whether to use pycffirmware or not (NOTE: only set to False for debugging purposes)
 verbose: True # Boolean passed to the Controller class, can be used to turn on and off additional printouts
 
@@ -23,7 +23,7 @@ quadrotor_config:
   pyb_freq: 500 # If `use_firmware` == True, must be multiple of 500, otherwise it must be multiple of ctrl_freq
   episode_len_sec: 33  # Maximum episode duration, in seconds
 
-  done_on_violation: False # Whether `done` becomes True when a constraint is violated
+  done_on_violation: True # Whether `done` becomes True when a constraint is violated
   done_on_completion: True # Whether `done` becomes True when the task is completed (traveled all gates and 2'' hover at stabilization_goal)
   done_on_collision: True # Whether `done` becomes True when a collision happens
   cost: competition  # Sparse reward function, if you desire, re-implement it in Quadrotor._get_reward()
@@ -162,16 +162,16 @@ quadrotor_config:
       # - -10  # r
 
   # Disturbances
-  disturbances:
-    # Additive noise on the commanded input action
-    action:
-      - disturbance_func: white_noise
-        std: 0.001
-    # Random external force applied to the quadrotor (e.g. a push or wind)
-    dynamics:
-      - disturbance_func: uniform
-        low: [-0.1, -0.1, -0.1]
-        high: [0.1, 0.1, 0.1]
+  # disturbances:
+  #   # Additive noise on the commanded input action
+  #   action:
+  #     - disturbance_func: white_noise
+  #       std: 0.001
+  #   # Random external force applied to the quadrotor (e.g. a push or wind)
+  #   dynamics:
+  #     - disturbance_func: uniform
+  #       low: [-0.1, -0.1, -0.1]
+  #       high: [0.1, 0.1, 0.1]
 
 
 

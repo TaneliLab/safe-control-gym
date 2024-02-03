@@ -34,7 +34,7 @@ VERBOSE_PLOT = False
 ############# Standard Hyper Start ##################
 # T = 12 , SampleRate = 3
 VMAX = 6
-AMAX = 4
+AMAX = 3  # 4 tends to be risky in level3 scenrios: or constraints easy to violate
 LAMBDA_T = 10
 LAMBDA_GATES = 3000
 LAMBDA_V = 100

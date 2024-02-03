@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 VERBOSE_PLOT = False
 VMAX = 6
-AMAX = 3  # 3 is risky in simple but works in hard and standard
+AMAX = 2  # 3 is risky in simple but works in hard and standard
 LAMBDA_GATES = 4000
 LAMBDA_DRONE = 2000
 LAMBDA_V = 0 #0
