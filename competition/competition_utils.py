@@ -359,8 +359,8 @@ def plot_real_trajectory(t_scaled,
     axs[3].set_ylabel('acc (m/s-2)', fontsize=12)
     axs[3].set_xlabel('time (s)', fontsize=12)
     axs[3].legend(loc='lower right', fontsize=13)
-    plt.show(block=False)
     plt.savefig("results/refvsobs_xyz.png")
+    plt.show(block=False)
     plt.pause(2)
     plt.close()
 
@@ -370,8 +370,8 @@ def plot_real_trajectory(t_scaled,
     ax.plot3D(ref_x, ref_y, ref_z, label='ref')
     ax.plot3D(obs_x, obs_y, obs_z, label='obs')
     plt.legend()
-    plt.show(block=False)
     plt.savefig("results/refvsobs_3D.png")
+    plt.show(block=False)
     plt.pause(2)
     plt.close()
 
