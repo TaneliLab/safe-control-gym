@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
 VERBOSE = False
-VERBOSE_PLOT = True
+VERBOSE_PLOT = False
 
 ################ Hard scenrios hypers Start###################
 # T = 14  SampleRate=3

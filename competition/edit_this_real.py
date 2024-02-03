@@ -131,7 +131,6 @@ class Controller():
         self.init_flight_time = 12  # 10 with AMAX=8 infeasible
 
         self.gate_id_now = -99
-        self.takeoffFlag = False
         
         self.takeOffTime = 1
         self.takeOffHeight = 1
@@ -147,48 +146,6 @@ class Controller():
 
         # Call a function in module `example_custom_utils`.
         ecu.exampleFunction()
-
-        # # Example: hardcode waypoints through the gates.
-        # height_tall = 1.14
-        # height_low = 0.55
-        # if use_firmware:
-        #     waypoints = [
-        #         (self.initial_obs[0], self.initial_obs[2], height_tall)
-        #     ]  # Height is hardcoded scenario knowledge.
-        # else:
-        #     waypoints = [(self.initial_obs[0], self.initial_obs[2],
-        #                   self.initial_obs[4])]
-
-        # for idx, g in enumerate(self.NOMINAL_GATES):
-        #     if g[6] == 0:  #tall
-        #         waypoints.append(
-        #             (g[0], g[1],
-        #              initial_info["gate_dimensions"]["tall"]["height"]))
-        #     else:
-        #         waypoints.append(
-        #             (g[0], g[1],
-        #              initial_info["gate_dimensions"]["low"]["height"]))
-
-        # waypoints.append([
-        #     initial_info["x_reference"][0], initial_info["x_reference"][2],
-        #     initial_info["x_reference"][4]
-        # ])
-
-        # waypoints2 = waypoints[1:-1]
-        # waypoints2 = np.array(waypoints2)
-
-        # # Polynomial fit.
-        # self.waypoints = np.array(waypoints)
-
-        # # TOM Version
-        # if self.Planner_Type == "classic":
-        #     trajPlanner = TrajectoryPlanner(waypoints[0], waypoints[-1],
-        #                                     waypoints2, self.NOMINAL_OBSTACLES)
-
-        #     trajPlanner.optimizer()
-
-        #     trajectory = trajPlanner.spline
-        #     omegaTrajectory = trajPlanner.omega_spline
 
         if self.Planner_Type == "replan":
             # trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
@@ -206,7 +163,6 @@ class Controller():
                                         self.sampleRate)
             trajPlanner.optimizer()
             trajectory = trajPlanner.spline
-            self.global_trajectory = copy.copy(trajectory)
             self.gate_min_dist_knots = trajPlanner.gate_min_dist_knots
             self.drone_obs_stack = np.array([])
             self.gate_pos_stack = np.array([])
@@ -239,6 +195,7 @@ class Controller():
 
 
         self.trajectory = copy.copy(trajectory)
+        self.global_trajectory = copy.copy(trajectory)
         self.flight_duration = trajPlanner.t  # flight duration
         print("flight time plan:", self.flight_duration)
 
@@ -614,6 +571,17 @@ class Controller():
         _ = self.done_buffer
         _ = self.info_buffer
 
+        # for next flight
+        self.gate_id_now = -99
+        self.completeFlag = False
+        self.high2lowlevelFlag = True  # allow notifysetpoint command
+        self.low2highlevelFlag = True
+        self.takeoff = False
+        self.takeoff_cmd = False
+        self.land = False
+        self.land_cmd = False
+        self.trajectory = self.global_trajectory
+
         #########################
         # REPLACE THIS (END) ####
         #########################
@@ -636,6 +604,7 @@ class Controller():
         # Counters.
         self.interstep_counter = 0
         self.interepisode_counter = 0
+
 
     def interEpisodeReset(self):
         """Initialize/reset learning timing variables.

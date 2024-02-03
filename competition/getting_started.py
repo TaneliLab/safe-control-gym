@@ -313,6 +313,7 @@ def run(test=False):
 
             # Update the controller internal state and models.
             ctrl.interEpisodeLearn()
+            ctrl.reset()
 
             # Append episode stats.
             if info['current_target_gate_id'] == -1:
