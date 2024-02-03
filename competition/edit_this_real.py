@@ -581,7 +581,9 @@ class Controller():
         self.land = False
         self.land_cmd = False
         self.trajectory = self.global_trajectory
-
+        self.drone_obs_stack = np.array([])
+        self.gate_pos_stack = np.array([])
+        self.current_time_stack = []
         #########################
         # REPLACE THIS (END) ####
         #########################
