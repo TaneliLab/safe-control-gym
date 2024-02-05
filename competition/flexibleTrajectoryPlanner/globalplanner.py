@@ -34,7 +34,8 @@ VERBOSE_PLOT = False
 ############# Standard Hyper Start ##################
 # T = 12 , SampleRate = 3
 VMAX = 6
-AMAX = 3  # 4 tends to be risky in level3 scenrios: or constraints easy to violate
+# AMAX 4 tends to be risky in level3 scenrios: or constraints easy to violate, # 3 is safe for three scenrios
+AMAX = 3  
 LAMBDA_T = 10
 LAMBDA_GATES = 3000
 LAMBDA_V = 100
@@ -849,8 +850,7 @@ class Globalplanner:
     def plot_xyz(self):
         """Plot the xyz trajectory
         """
-
-        _, axs = plt.subplots(3, 1)
+        _, axs = plt.subplots(3, 1, dpi=300)
         knot0 = self.deltaT2knot(self.deltaT0)
         knot = self.deltaT2knot(self.deltaT)
 
@@ -864,6 +864,12 @@ class Globalplanner:
         x_coeffs = coeffs[:, 0]
         y_coeffs = coeffs[:, 1]
         z_coeffs = coeffs[:, 2]
+
+        init_coeffs = self.init_spline.c
+        x_init_coeffs = init_coeffs[:, 0]
+        y_init_coeffs = init_coeffs[:, 1]
+        z_init_coeffs = init_coeffs[:, 2]
+
         print("t:", self.opt_spline.t)
         print("pos:", x_coeffs)
 
@@ -872,19 +878,34 @@ class Globalplanner:
         axs[0].scatter(self.opt_spline.t[3:-3],
                        x_coeffs,
                        label='control_opt_x')
+        
+        axs[0].scatter(self.init_spline.t[3:-3],
+                       x_init_coeffs,
+                       label='control_init_x')
+
+
         axs[0].legend()
         axs[1].plot(time, p.T[1], label='opt_y')
         axs[1].plot(init_time, p_init.T[1], label='init_y')
+        # opt control points
         axs[1].scatter(self.opt_spline.t[3:-3],
                        y_coeffs,
                        label='control_opt_y')
-        axs[1].legend()
+        # init control points
+        axs[1].scatter(self.init_spline.t[3:-3],
+                y_init_coeffs,
+                label='control_init_y')
+        # axs[1].legend()
+
         axs[2].plot(time, p.T[2], label='opt_z')
         axs[2].plot(init_time, p_init.T[2], label='init_z')
         axs[2].scatter(self.opt_spline.t[3:-3],
                        z_coeffs,
                        label='control_opt_z')
-        axs[2].legend()
+        axs[2].scatter(self.init_spline.t[3:-3],
+                        z_init_coeffs,
+                        label='control_init_z')
+        # axs[2].legend()
         plt.savefig("./plan_data/global_xyz_plan.jpg")
         plt.show(block=False)
         plt.pause(2)
@@ -908,21 +929,24 @@ class Globalplanner:
         ax.set_zlim([0, 2])
 
         ax.grid(False)
-        # ax.plot(p_init.T[0], p_init.T[1], p_init.T[2], label='Init_Traj')
+        ax.plot(p_init.T[0], p_init.T[1], p_init.T[2], label='Init_Traj')
         ax.plot(p.T[0], p.T[1], p.T[2], label='Opt_Traj')
 
-        # ax.plot(coeffs[:, 0], coeffs[:, 1], coeffs[:, 2], '*', label='control')
-        ax.scatter(self.positions_risky.T[0],
-                   self.positions_risky.T[1],
-                   self.positions_risky.T[2],
-                   label='Risky_areas')
-        # ax.scatter(self.positions_risky_init.T[0], self.positions_risky_init.T[1], self.positions_risky_init.T[2], label='risky_init')
+        ax.plot(coeffs[:, 0], coeffs[:, 1], coeffs[:, 2], '*', label='Control_opt')
+        # ax.scatter(self.positions_risky.T[0],
+        #            self.positions_risky.T[1],
+        #            self.positions_risky.T[2],
+        #            label='Risky_areas')
+        # ax.scatter(self.positions_risky_init.T[0], 
+        #            self.positions_risky_init.T[1],
+        #             self.positions_risky_init.T[2], 
+        #             label='risky_init')
 
         ax.plot(self.waypoints.T[0],
                 self.waypoints.T[1],
                 self.waypoints.T[2],
                 'o',
-                label='Gates')
+                label='Waypoints')
 
         for obst in self.NOMINAL_OBSTACLES:
             obst_x = obst[0]
