@@ -52,7 +52,7 @@ class KernelRecursiveLeastSquares:
         :return: New estimated acceleration command.
         """
         # Compute the error between observation and desired output
-        error = observation - desired_output
+        error = observation - desired_output  # TODO: check whether is flipped 
 
         # Use acc_command as the sole input to the kernel
         k = np.array([self.kernel_function(acc_command, self.X[i]) for i in range(self.num_taps)])
@@ -76,7 +76,7 @@ class KernelRecursiveLeastSquares:
         self.X[-1] = acc_command
 
         # Estimate new acceleration command to minimize error in the next iteration
-        new_acc_command = acc_command - np.dot(self.alpha, k)
+        new_acc_command = acc_command - np.dot(self.alpha, k)  # check with the error
         return new_acc_command[0]
 
     
