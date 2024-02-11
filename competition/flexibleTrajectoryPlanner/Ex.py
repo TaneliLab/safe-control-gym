@@ -1,7 +1,11 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+import yaml
+import os
+print(os.getcwd())
+filepath = os.path.join('..', 'planner.yaml')
 
-a = [1, 2, 3]
-b = [4, 5, 6]
-print(np.array(a)-np.array(b))
+with open(filepath, 'r') as file:
+    data = yaml.safe_load(file)
+print(data['globalplan'])
+
+for d in data['globalplan']:
+    print(d)

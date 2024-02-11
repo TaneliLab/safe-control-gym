@@ -28,6 +28,8 @@ import numpy as np
 import copy
 from collections import deque
 import time as realtime
+import os
+import yaml
 
 try:
     from competition_utils import Command, PIDController, timing_step, timing_ep, plot_trajectory, draw_trajectory
@@ -47,20 +49,14 @@ except ImportError:
     # PyTest import.
     from . import example_custom_utils as ecu
 
-# switch using which planner
-# from trajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
-from aggressiveTrajectoryPlanner.trajectoryPlanner import TrajectoryPlanner
+
+# adaptive control module
 from systemIdentification.kRLS import KernelRecursiveLeastSquares, KernelRecursiveLeastSquaresMultiDim
-
-# New SplineFactory and localReplanner
-# from aggressiveTrajectoryPlanner.globalplanner import Globalplanner
-# from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
-# from aggressiveTrajectoryPlanner.localReplanner import LocalReplanner
-
-# flexible in control points, cost design updated
+# planning module
 from flexibleTrajectoryPlanner.globalplanner import Globalplanner
 from flexibleTrajectoryPlanner.SplineFactory import TrajectoryGenerator
 from flexibleTrajectoryPlanner.onlinelocalReplanner import OnlineLocalReplanner
+
 #########################
 # REPLACE THIS (END) ####
 #########################
@@ -123,19 +119,22 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
+        filepath = os.path.join('.','planner.yaml')
+        with open(filepath, 'r') as file:
+            data = yaml.safe_load(file)
         
+        # load hyperparameters from yaml file
+        for general_hyperparas in data['general']:
+            self.LC_Module = general_hyperparas['LC_Module']
+            self.Planner_Type = general_hyperparas['Planner_Type']   #"no_replan", "replan", "only_init"
+            self.sampleRate = general_hyperparas['sampleRate']
+            self.init_flight_time = general_hyperparas['init_flight_time']  # 10 with AMAX=8 infeasible
+            self.takeOffTime = general_hyperparas['takeOffTime']
+            self.takeOffHeight = general_hyperparas['takeOffHeight']
+
         # hyperparmeters 
-        self.LC_Module = True
-        self.Planner_Type = "replan"   #"no_replan", "replan", "only_init"
-        self.sampleRate = 3
-        self.init_flight_time = 12  # 10 with AMAX=8 infeasible
-
         self.gate_id_now = -99
-        
-        self.takeOffTime = 1
-        self.takeOffHeight = 1
-        self.onflyHeight = 1   # for adaptive control test 
-
+        # self.onflyHeight = 1   # for adaptive control test 
         self.completeFlag = False
         self.high2lowlevelFlag = True  # allow notifysetpoint command
         self.low2highlevelFlag = True
