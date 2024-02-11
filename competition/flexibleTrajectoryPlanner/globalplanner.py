@@ -52,7 +52,7 @@ GATE_DT = 0.1
 # Gates properties: {'tall': {'shape': 'square', 'height': 1.0, 'edge': 0.45}, 'low': {'shape': 'square', 'height': 0.525, 'edge': 0.45}}
 # Obstacles properties: {'shape': 'cylinder', 'height': 1.05, 'radius': 0.05}
 try:
-    from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator
+    from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator # very risky here
 except ImportError:
     from SplineFactory import TrajectoryGenerator
 
