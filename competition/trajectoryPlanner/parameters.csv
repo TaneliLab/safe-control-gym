@@ -1,7 +1,0 @@
-parameter,level0,level1,level2,level3
-VMAX,10,10,10,10
-LAMBDA_T,0.2,0.01,0.001,0.005
-LAMBDA_V,1,1,10,10
-LAMBDA_GATES,10,100,100,100
-LAMBDA_OBST,1,1,1,1
-Flight Time[s],9.26, 9.26, 9.26, 9.26
