@@ -119,11 +119,12 @@ class Controller():
         #########################
         # REPLACE THIS (START) ##
         #########################
+
+        # load hyperparameters from yaml file
         filepath = os.path.join('.','planner.yaml')
         with open(filepath, 'r') as file:
             data = yaml.safe_load(file)
-        # print(data)
-        # load hyperparameters from yaml file
+        
         general_hyperparas = {k: v for d in data['general'] for k, v in d.items()}
         
         self.LC_Module = general_hyperparas['LC_Module']
@@ -133,18 +134,12 @@ class Controller():
         self.takeOffTime = general_hyperparas['takeOffTime']
         self.takeOffHeight = general_hyperparas['takeOffHeight']
         
-        # self.LC_Module = plan_hyperparas['general']['LC_Module']
-        # self.Planner_Type = plan_hyperparas['general']['Planner_Type']   #"no_replan", "replan", "only_init"
-        # self.sampleRate = plan_hyperparas['general']['sampleRate']
-        # self.init_flight_time = plan_hyperparas['general']['init_flight_time']  # 10 with AMAX=8 infeasible
-        # self.takeOffTime = plan_hyperparas['general']['takeOffTime']
-        # self.takeOffHeight = plan_hyperparas['general']['takeOffHeight']
-        # hyperparmeters 
+        # logic for commanding the drone
         self.gate_id_now = -99
-        # self.onflyHeight = 1   # for adaptive control test 
+        # self.onflyHeight = 1   # only for adaptive control test 
         self.completeFlag = False
         self.high2lowlevelFlag = True  # allow notifysetpoint command
-        self.low2highlevelFlag = True
+        self.low2highlevelFlag = True  # allow notifysetpoint command
         self.takeoff = False
         self.takeoff_cmd = False
         self.land = False
@@ -154,10 +149,6 @@ class Controller():
         ecu.exampleFunction()
 
         if self.Planner_Type == "replan":
-            # trajGen = TrajectoryGenerator(waypoints[0], waypoints[-1],
-            #                               waypoints2, self.NOMINAL_OBSTACLES, self.sampleRate, self.init_flight_time)
-
-            # Better way of Generator, plug waypoints into Trajectory Generator
             trajGen = TrajectoryGenerator(initial_obs, initial_info,
                                           self.sampleRate,
                                           self.init_flight_time)
@@ -204,7 +195,6 @@ class Controller():
         self.global_trajectory = copy.copy(trajectory)
         self.flight_duration = trajPlanner.t  # flight duration
         print("flight time plan:", self.flight_duration)
-
         timesteps = np.linspace(0, self.flight_duration,
                                 int(self.flight_duration * self.CTRL_FREQ))
 
