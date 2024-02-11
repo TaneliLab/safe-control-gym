@@ -45,7 +45,15 @@ except ImportError:
 class Globalplanner:
 
     def __init__(self, spline, initial_obs, initial_info, sampleRate):
-        
+        """Initialization of the class
+
+        Args:
+            spline: initial spline from Splinefactory
+            initial_obs (list): start state of drone taken from config yaml files
+            initial_info (dict): initial gate obstacles goal ... infos from config yaml files 
+            sampleRate: from SplineFactory, determine how many control points are optimized
+
+        """
         self.sampleRate = sampleRate
         self.obstacle_height = initial_info['obstacle_dimensions'][
             "height"]  #  height 1.05

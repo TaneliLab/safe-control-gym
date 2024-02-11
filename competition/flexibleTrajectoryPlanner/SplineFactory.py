@@ -16,10 +16,10 @@ class TrajectoryGenerator:
         """Initialization of the class
 
         Args:
-            start (np.array): array with start position
-            goal (np.array): array with goal position
-            gates (list or array): container of gates postions and orientations
-            obstacles (list or array): container of positions
+            initial_obs (list): start state of drone taken from config yaml files
+            initial_info (dict): initial gate obstacles goal ... infos from config yaml files 
+            sampleRate: from SplineFactory, determine how many control points are optimized
+            flight_time_init: initial plan flight time
         """
         self.initial_obs = initial_obs
         self.initial_info = initial_info
@@ -83,23 +83,20 @@ class TrajectoryGenerator:
 
     def interpolate_twoForGate(self):
         """Interpolate based on waypoints on a fictitious knot vector
-
+           twoForGate: interpolate two points for gate: one before gate center, one after gate center
+           This is middle product of splinefactory, in final one interpolate_single_gate is used
         Returns:
             scipy.interolate.Bspline: returns an initial guess for te optimizer, which is the bspline trajectory
         """
 
         # Compute the initial knot vector to perform interpolation
-
         knots = np.linspace(0, self.t, self.n)
-
-        # # Normalize the knots for later scaling with time
-        # self.normalized_knots = np.linspace(0, 1, self.n)
 
         # Degree of the curve, selected based on the number of waypoints and the requested smoothness
         self.degree = 5
 
         # Boundary conditions on higher derivatives, initialized at zero to give a coutios initial guess to the optimizer
-        #  the number of waypoints nt has to respect the conditions: nt - degree == len(bc_0) + len(bc_r)
+        # the number of waypoints nt has to respect the conditions: nt - degree == len(bc_0) + len(bc_r)
         bc_0 = [(1, np.zeros((3, ))), (2, np.zeros((3, )))]
         bc_r = [(1, np.zeros((3, ))), (2, np.zeros((3, )))]
 
@@ -111,7 +108,7 @@ class TrajectoryGenerator:
                                                   k=self.degree,
                                                   bc_type=bc)
 
-        # Interpolation of the same B-spline with more control points
+        # following adds more control points in the same b-spline
 
         num_control_points = self.n + (self.n - 1) * (self.sampleRate - 1)
         timesteps = np.linspace(0, self.t, num_control_points)
@@ -120,19 +117,16 @@ class TrajectoryGenerator:
 
         gatetimesteps = timesteps[self.sampleRate:-1:self.sampleRate]
         gatePoints = self.spline(gatetimesteps)
-        print("timesteps:", timesteps)
-        print("controlPoints:", controlPoints)
         factory_timesteps = timesteps[0:self.sampleRate]  # t0 t1 t_(g1-1)
         factory_controlPoints = controlPoints[0:self.sampleRate, :]
 
-        delta = 0.2
-        deltat_scale = 0.1
+        delta = 0.2 # control deviation distance from gate
+        deltat_scale = 0.1 # control deviation time from gatetime
         for idx, g in enumerate(self.NOMINAL_GATES):
             height = self.initial_info["gate_dimensions"]["tall"][
                 "height"] if g[6] == 0 else self.initial_info[
                     "gate_dimensions"]["low"]["height"]
             delta_p = [-delta * np.sin(g[5]), delta * np.cos(g[5]), 0]
-            gate_idx = (idx + 1) * self.sampleRate
 
             before_gate_pos = gatePoints[idx, :] - delta_p
             after_gate_pos = gatePoints[idx, :] + delta_p
@@ -152,16 +146,15 @@ class TrajectoryGenerator:
                                          1:(idx + 2) * self.sampleRate, :]
             factory_controlPoints = np.vstack(
                 (factory_controlPoints, middle_point))
-
+            
+        # augmented control points
         factory_controlPoints = np.vstack(
             (factory_controlPoints, controlPoints[-1, :]))
+        # augmented timesteps
         factory_timesteps = np.hstack((factory_timesteps, timesteps[-1]))
 
-        # print("factory_controlPoints:", factory_controlPoints)
-        # print("factory_timesteps:", factory_timesteps)
-        # print("factory_controlPoints:", factory_controlPoints.shape)
-        # print("factory_timesteps:", factory_timesteps.shape)
 
+        # interpol spline with augmented control points
         self.spline = interpol.make_interp_spline(factory_timesteps,
                                                   factory_controlPoints,
                                                   k=self.degree,
@@ -178,8 +171,6 @@ class TrajectoryGenerator:
 
         # Store the coefficients of the spline
         self.coeffs = self.spline.c
-        print("init coeffs:", self.coeffs)
-
         return self.spline
 
     def interpolate_single_gate(self):
@@ -218,9 +209,6 @@ class TrajectoryGenerator:
         timesteps = np.linspace(0, self.t, num_control_points)
         delta_t = timesteps[1] - timesteps[0]
         controlPoints = self.spline(timesteps)
-        print("timesteps:", timesteps)
-        print("controlPoints:", controlPoints)
-
         self.spline = interpol.make_interp_spline(timesteps,
                                                   controlPoints,
                                                   k=self.degree,
@@ -253,20 +241,6 @@ class TrajectoryGenerator:
         velo = velo_spline(time)
         acc = acc_spline(time)
 
-        # just verify velocity spline is same with velocity_instantous
-        # dt = 0.01
-        # velo_in = []
-        # for t in time[0:-1]:
-        #     p_t = pos_spline(t)
-        #     p_tprime = pos_spline(t + dt)
-
-        #     v_t = (p_tprime - p_t)/dt
-        #     velo_in.append(v_t)
-
-        # velo_in.append([0,0,0])
-        # velo_in = np.array(velo_in)
-        # print("velo_in:", velo_in)
-
         _, axs = plt.subplots(3, 1)
         axs[0].plot(time, pos.T[0], label='position_spline')
         axs[0].plot(time, velo.T[0], label='velocity_spline')
@@ -286,33 +260,31 @@ class TrajectoryGenerator:
         plt.show()
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    GATES = [[ 0.5,   -2.5  ,  1.   ],
-    [ 2. , -1.5  ,  0.525],
-    [ 0. ,  0.2  ,  0.525],
-    [-0.5,  1.5  ,  1.   ]
-    #  [-0.9,  1.0  ,  2.   ]
-    ]
+#     GATES = [[ 0.5,   -2.5  ,  1.   ],
+#     [ 2. , -1.5  ,  0.525],
+#     [ 0. ,  0.2  ,  0.525],
+#     [-0.5,  1.5  ,  1.   ]
+#     #  [-0.9,  1.0  ,  2.   ]
+#     ]
 
-
-
-    OBSTACLES = [
-        [1.5, -2.5, 0, 0, 0, 0],
-        [0.5, -1, 0, 0, 0, 0],
-        [1.5, 0, 0, 0, 0, 0],
-        [-1, 0, 0, 0, 0, 0]
-        ]
+#     OBSTACLES = [
+#         [1.5, -2.5, 0, 0, 0, 0],
+#         [0.5, -1, 0, 0, 0, 0],
+#         [1.5, 0, 0, 0, 0, 0],
+#         [-1, 0, 0, 0, 0, 0]
+#         ]
 
 
-    X0 = [ -0.9, -2.9,  1]
+#     X0 = [ -0.9, -2.9,  1]
 
-    GOAL= [-0.5, 2.9, 0.75]
+#     GOAL= [-0.5, 2.9, 0.75]
 
-    trajGen = TrajectoryGenerator(X0, GOAL, GATES,OBSTACLES)
-    traj = trajGen.spline
-    print(traj.c)
-    print(traj.t)
-    print('x-------------')
-    print(trajGen.x)
-    print(trajGen.new_x)
+#     trajGen = TrajectoryGenerator(X0, GOAL, GATES,OBSTACLES)
+#     traj = trajGen.spline
+#     print(traj.c)
+#     print(traj.t)
+#     print('x-------------')
+#     print(trajGen.x)
+#     print(trajGen.new_x)

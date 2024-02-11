@@ -523,9 +523,6 @@ class Controller():
                 
                 self.drone_obs_stack = obs if len(self.drone_obs_stack)==0 else np.vstack((self.drone_obs_stack, obs))
                 self.gate_pos_stack = true_gate_pose if len(self.gate_pos_stack)==0 else np.vstack((self.gate_pos_stack, true_gate_pose))
-                print("self.drone_obs_stack:", self.drone_obs_stack)
-                print("self.gate_pos_stack:", self.gate_pos_stack)
-                print("gate_idnow:", self.gate_id_now)
                 self.current_time_stack.append(self.current_time-self.takeOffTime)
                 info_local = {"trajectory":self.trajectory, "global_trajectory":self.global_trajectory, 
                               "sampleRate":self.sampleRate, "current_gate_id":current_gate_id, 

@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 import os 
 import yaml
 
-# load hyperparas from yaml
+#########################load hyperparas from yaml start##################
+
 filepath = os.path.join('.','planner.yaml')
 with open(filepath, 'r') as file:
     data = yaml.safe_load(file)
@@ -27,10 +28,16 @@ LAMBDA_ACC = local_plan_hyperparas['LAMBDA_ACC']
 LAMBDA_OBST = local_plan_hyperparas['LAMBDA_OBST']  # 1500 before
 LAMBDA_HEADING = local_plan_hyperparas['LAMBDA_HEADING']
 
+#########################load hyperparas from yaml end##################
 class OnlineLocalReplanner:
 
     def __init__(self, info_local):
+        """Initialization of the class
 
+        Args:
+            info_local: contains info needed for local replan, constructed in edit_this_real.InterStepLearn
+
+        """
         # sampleRate: to get
         self.global_spline = info_local["global_trajectory"]
         self.spline = info_local["trajectory"]
@@ -42,21 +49,13 @@ class OnlineLocalReplanner:
         self.current_gate_pos = info_local["current_gate_pose_true"]
         self.sampleRate = info_local["sampleRate"]
         self.obstacle = info_local["nominal_obstacles"]
-        # optimize pipeline
-        # self.x = spline.c
-        # self.num_of_control_points = self.x.shape[0]
-
         self.x = self.coeffs.flatten()
-        # self.len_control_coeffs = len(self.x)
+
         # # TODO: consider time? or just position
         self.gate_min_dist_knots = info_local["gate_min_dist_knots"]
-
         self.coeffs_id_gate = self.gateID2controlPoint()
-        # self.knot_id_gate = self.gateID2knot()
-
         self.x = self.x[(self.coeffs_id_gate - 1) *
                         3:(self.coeffs_id_gate + 2) * 3]
-
         self.current_gate_pos = info_local["current_gate_pose_true"]
         obs = info_local["current_drone_state"]
         self.current_drone_pos = [obs[0], obs[2], obs[4]]
@@ -67,15 +66,6 @@ class OnlineLocalReplanner:
         self.last_verbose = info_local["last_verbose"]
         self.vmax = VMAX
         self.amax = AMAX
-        print("self.knot:", self.knot)
-    # def hardGateSwitch(self):
-    #     if self.current_gateID >= 0:
-    #         coeffs_id = self.gateID2controlPoint()
-    #         self.coeffs[coeffs_id] = self.current_gate_pos[0:3]
-    #         spline = interpol.BSpline(self.knot, self.coeffs, self.degree)
-    #         return spline
-    #     else:
-    #         return False
         
     def gateID2controlPoint(self):
         if self.current_gateID >= 0:
@@ -86,19 +76,8 @@ class OnlineLocalReplanner:
         return coeffs_id
 
     def optimizer(self):
-        # coeffs_id_gate = self.gateID2controlPoint()
-        # TODO: locate idx of coeffs: three key control points around the gate
-        # locate idx of knots: three key
-        # local_idx = [coeffs_id_gate-1, coeffs_id_gate, coeffs_id_gate+1]
-        # # coeffs way
-        # mask = np.zeros(self.num_of_control_points)
-        # mask[coeffs_id_gate - 1:coeffs_id_gate + 2] = 1
+        #locate idx of coeffs: three key control points around the gate
 
-        # flatten way
-        # mask = np.zeros(self.len_control_coeffs)
-        # mask[(coeffs_id_gate - 1) * 3:(coeffs_id_gate + 2) * 3] = 1
-
-        # self.valid_coeffs_mask = mask
 
         res = opt.minimize(self.objective,
                            self.x,
@@ -153,14 +132,12 @@ class OnlineLocalReplanner:
 
     def getCost(self, x):
         cost = 0
-
         coeffs = self.unpackx(x)
         knots = self.knot
         spline = interpol.BSpline(knots, coeffs, self.degree)
-
         cost += LAMBDA_HEADING * self.headingCost_local(x, spline)
         cost += LAMBDA_GATES * self.gatesCost_local(x, spline)
-        # cost += LAMBDA_V * self.velocityLimitCost(x, spline)
+        cost += LAMBDA_V * self.velocityLimitCost(x, spline)
         cost += LAMBDA_ACC * self.accelerationLimitCost(x, spline)
         cost += LAMBDA_DRONE * self.droneCost(x, spline)
         cost += LAMBDA_OBST * self.obstacleCost_strict(x, spline)
@@ -177,8 +154,6 @@ class OnlineLocalReplanner:
         before_gate_pos = spline(gate_knot - dt)  # :np.array
         after_gate_pos = spline(gate_knot + dt)
         d = after_gate_pos - before_gate_pos
-        # print("gate_knot:", gate_knot)
-        # print("d:", d)
         P0 = self.current_gate_pos[0:3]
         N = np.array([
             -np.sin(self.current_gate_pos[5]),
@@ -189,8 +164,6 @@ class OnlineLocalReplanner:
 
         heading_angle_deg = abs(np.degrees(heading_angle_rad))
         cost = heading_angle_deg
-        # print("current_gate:", self.current_gate_pos)
-        # print("heading_angle:", heading_angle_deg)
         return cost
 
     def gatesCost_local(self, x, spline):
@@ -235,10 +208,7 @@ class OnlineLocalReplanner:
 
         # Iterate through obstacles
         for obst in self.obstacle:
-            # print("positions[3]:", positions[:, 2])
-            # print("positions[:2]:", positions[:, :2])
             obst_pos = [obst[0], obst[1], 1.05  ]  # TODO: 1.05 is nominal height of obstacle
-
             # Compute distance between obstacle position and control point
             dist = positions[:, :2] - obst_pos[:2]
             # Norm of the distance
@@ -246,7 +216,6 @@ class OnlineLocalReplanner:
 
             delta_height = positions[:, 2] - obst_pos[
                 2]  # how much higher than obstacle
-
             # Select the ones below the threshold(dangerous)
             mask_dist_unsafe = dist < threshold
             mask_height_unsafe = delta_height < 0.1
@@ -258,8 +227,6 @@ class OnlineLocalReplanner:
             # Cost as the difference between the threshold values and the summed breach of constraint
             cost += (threshold * len(breached) - np.sum(breached))**2
 
-        # 
-        
         # also keep the start knot
         return cost
 
@@ -422,28 +389,3 @@ class OnlineLocalReplanner:
         plt.savefig("./online_plan_data/global_vs_local_3d.png")
         plt.show()
 
-if __name__ == "__main__":
-
-    GATES = [
-        # x, y, z, r, p, y, type (0: `tall` obstacle, 1: `low` obstacle)
-        [0.5, -2.5, 0, 0, 0, -1.57, 0],
-        [2, -1.5, 0, 0, 0, 0, 1],
-        [0, 0.2, 0, 0, 0, 1.57, 1],
-        [-0.5, 1.5, 0, 0, 0, 0, 0]
-    ]
-
-    OBSTACLES = [
-        # x, y, z, r, p, y
-        [1.5, -2.5, 0, 0, 0, 0],
-        [0.5, -1, 0, 0, 0, 0],
-        [1.5, 0, 0, 0, 0, 0],
-        [-1, 0, 0, 0, 0, 0]
-    ]
-
-    X0 = [-0.9, -2.9, 0.03]
-
-    GOAL = [-0.5, 2.9, 0.75]
-
-    initial_obs = np.array([-0.9, 0, -2.9, 0, 0.03,0])
-
-    # initial_info =
