@@ -1,6 +1,8 @@
 import numpy as np
 
 import copy
+import os 
+import yaml
 
 import scipy.interpolate as interpol
 
@@ -10,49 +12,32 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
-VERBOSE = False
-VERBOSE_PLOT = False
-
-################ Hard scenrios hypers Start###################
-# T = 14  SampleRate=3
-# VMAX = 6
-# AMAX = 4
-# LAMBDA_T = 10
-# LAMBDA_GATES = 3000
-# LAMBDA_V = 100
-# LAMBDA_ACC = 1000
-# LAMBDA_OBST = 2000  # 1500 before
-# # LAMBDA_TURN = 0
-# # LAMBDA_TURN_ANGLE = 0
-# LAMBDA_HEADING = 1500
-# LAMBDA_INTERSECT = 3000
-# LAMBDA_GATEOBST = 1500
-# GATE_DT = 0.25
-
-############# Hard scenrios hypers End################
-
-############# Standard Hyper Start ##################
-# T = 12 , SampleRate = 3
-VMAX = 6
-# AMAX 4 tends to be risky in level3 scenrios: or constraints easy to violate, # 3 is safe for three scenrios
-AMAX = 3  
-LAMBDA_T = 10
-LAMBDA_GATES = 3000
-LAMBDA_V = 100
-LAMBDA_ACC = 1000
-LAMBDA_OBST = 3000  # 1500 before
-# LAMBDA_TURN = 0
-# LAMBDA_TURN_ANGLE = 0
-LAMBDA_HEADING = 500
-LAMBDA_INTERSECT = 3000
-LAMBDA_GATEOBST = 1500
-GATE_DT = 0.1
-############# Standard Hyper End ##################
+# load hyperparas from yaml
+filepath = os.path.join('.','planner.yaml')
+with open(filepath, 'r') as file:
+    data = yaml.safe_load(file)
+# load hyperparameters from yaml file
+global_plan_hyperparas = {k: v for d in data['globalplan'] for k, v in d.items()}
+VERBOSE = global_plan_hyperparas['VERBOSE']
+VERBOSE_PLOT = global_plan_hyperparas['VERBOSE_PLOT']
+VMAX = global_plan_hyperparas['VMAX']
+# AMAX=4 tends to be risky in level3 scenrios: or constraints easy to violate, 
+# AMAX=3 is safe for three scenrios
+AMAX = global_plan_hyperparas['AMAX'] 
+LAMBDA_T = global_plan_hyperparas['LAMBDA_T']
+LAMBDA_GATES = global_plan_hyperparas['LAMBDA_GATES']
+LAMBDA_V = global_plan_hyperparas['LAMBDA_V']
+LAMBDA_ACC = global_plan_hyperparas['LAMBDA_ACC']
+LAMBDA_OBST = global_plan_hyperparas['LAMBDA_OBST']  # 1500 before
+LAMBDA_HEADING = global_plan_hyperparas['LAMBDA_HEADING']
+LAMBDA_INTERSECT = global_plan_hyperparas['LAMBDA_INTERSECT']
+LAMBDA_GATEOBST = global_plan_hyperparas['LAMBDA_GATEOBST']
+GATE_DT = global_plan_hyperparas['GATE_DT']
 
 # Gates properties: {'tall': {'shape': 'square', 'height': 1.0, 'edge': 0.45}, 'low': {'shape': 'square', 'height': 0.525, 'edge': 0.45}}
 # Obstacles properties: {'shape': 'cylinder', 'height': 1.05, 'radius': 0.05}
 try:
-    from aggressiveTrajectoryPlanner.SplineFactory import TrajectoryGenerator # very risky here
+    from flexibleTrajectoryPlanner.SplineFactory import TrajectoryGenerator # very risky here
 except ImportError:
     from SplineFactory import TrajectoryGenerator
 
@@ -60,7 +45,7 @@ except ImportError:
 class Globalplanner:
 
     def __init__(self, spline, initial_obs, initial_info, sampleRate):
-
+        
         self.sampleRate = sampleRate
         self.obstacle_height = initial_info['obstacle_dimensions'][
             "height"]  #  height 1.05
@@ -72,8 +57,6 @@ class Globalplanner:
         self.knot0 = self.init_spline.t
         self.t = self.knot0[-1]
         self.init_t = self.t
-
-        # self.x = self.coeffs0.flatten()
 
         # include control points and knot time
         self.deltaT0 = self.knot2deltaT(self.knot0)
@@ -104,8 +87,6 @@ class Globalplanner:
         self.waypoints = self.setWaypoints()  # contain start goal
         self.tv = len(self.waypoints)
         # Obstacle positions
-        # self.obstacles = np.array(obstacles)
-
         self.degree = 5
         self.optLim = 3
         self.optVars = self.x[self.optLim:-self.optLim]
@@ -117,13 +98,14 @@ class Globalplanner:
         self.valid_coeffs_mask = self.validate()
         self.vmax = VMAX
         self.amax = AMAX
-        print("self.coeffs0", self.coeffs0.shape)
-        print("velo:", spline.derivative(1).c.shape)
-        print("velo:", spline.derivative(1).c)
-        print("acc:", spline.derivative(2).c.shape)
-        print("knots:", self.knots.shape)
-        print("knots:", self.knots)
-        print("x:", self.x)
+
+        # print("self.coeffs0", self.coeffs0.shape)
+        # print("velo:", spline.derivative(1).c.shape)
+        # print("velo:", spline.derivative(1).c)
+        # print("acc:", spline.derivative(2).c.shape)
+        # print("knots:", self.knots.shape)
+        # print("knots:", self.knots)
+        # print("x:", self.x)
 
     def knot2deltaT(self, knots):
         deltaT = []

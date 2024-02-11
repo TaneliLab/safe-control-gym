@@ -6,10 +6,9 @@ general:
   - takeOffTime: 1
   - takeOffHeight: 1
 
-
-
 globalplan:
   - VERBOSE_PLOT: False
+  - VERBOSE: False
   - VMAX: 6
   - AMAX: 3
   - LAMBDA_T: 10
@@ -35,3 +34,39 @@ localplan:
 
 
 
+
+################ Hard scenrios hypers Start###################
+# T = 14  SampleRate=3
+# VMAX = 6
+# AMAX = 4
+# LAMBDA_T = 10
+# LAMBDA_GATES = 3000
+# LAMBDA_V = 100
+# LAMBDA_ACC = 1000
+# LAMBDA_OBST = 2000  # 1500 before
+# # LAMBDA_TURN = 0
+# # LAMBDA_TURN_ANGLE = 0
+# LAMBDA_HEADING = 1500
+# LAMBDA_INTERSECT = 3000
+# LAMBDA_GATEOBST = 1500
+# GATE_DT = 0.25
+
+############# Hard scenrios hypers End################
+
+# ############# Standard Hyper Start ##################
+# # T = 12 , SampleRate = 3
+# VMAX = 6
+# # AMAX 4 tends to be risky in level3 scenrios: or constraints easy to violate, # 3 is safe for three scenrios
+# AMAX = 3  
+# LAMBDA_T = 10
+# LAMBDA_GATES = 3000
+# LAMBDA_V = 100
+# LAMBDA_ACC = 1000
+# LAMBDA_OBST = 3000  # 1500 before
+# # LAMBDA_TURN = 0
+# # LAMBDA_TURN_ANGLE = 0
+# LAMBDA_HEADING = 500
+# LAMBDA_INTERSECT = 3000
+# LAMBDA_GATEOBST = 1500
+# GATE_DT = 0.1
+# ############# Standard Hyper End ##################

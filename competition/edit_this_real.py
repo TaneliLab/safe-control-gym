@@ -122,16 +122,23 @@ class Controller():
         filepath = os.path.join('.','planner.yaml')
         with open(filepath, 'r') as file:
             data = yaml.safe_load(file)
-        
+        # print(data)
         # load hyperparameters from yaml file
-        for general_hyperparas in data['general']:
-            self.LC_Module = general_hyperparas['LC_Module']
-            self.Planner_Type = general_hyperparas['Planner_Type']   #"no_replan", "replan", "only_init"
-            self.sampleRate = general_hyperparas['sampleRate']
-            self.init_flight_time = general_hyperparas['init_flight_time']  # 10 with AMAX=8 infeasible
-            self.takeOffTime = general_hyperparas['takeOffTime']
-            self.takeOffHeight = general_hyperparas['takeOffHeight']
-
+        general_hyperparas = {k: v for d in data['general'] for k, v in d.items()}
+        
+        self.LC_Module = general_hyperparas['LC_Module']
+        self.Planner_Type = general_hyperparas['Planner_Type']   #"no_replan", "replan", "only_init"
+        self.sampleRate = general_hyperparas['sampleRate']
+        self.init_flight_time = general_hyperparas['init_flight_time']  # 10 with AMAX=8 infeasible
+        self.takeOffTime = general_hyperparas['takeOffTime']
+        self.takeOffHeight = general_hyperparas['takeOffHeight']
+        
+        # self.LC_Module = plan_hyperparas['general']['LC_Module']
+        # self.Planner_Type = plan_hyperparas['general']['Planner_Type']   #"no_replan", "replan", "only_init"
+        # self.sampleRate = plan_hyperparas['general']['sampleRate']
+        # self.init_flight_time = plan_hyperparas['general']['init_flight_time']  # 10 with AMAX=8 infeasible
+        # self.takeOffTime = plan_hyperparas['general']['takeOffTime']
+        # self.takeOffHeight = plan_hyperparas['general']['takeOffHeight']
         # hyperparmeters 
         self.gate_id_now = -99
         # self.onflyHeight = 1   # for adaptive control test 

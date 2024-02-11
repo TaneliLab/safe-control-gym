@@ -8,20 +8,24 @@ import scipy.optimize as opt
 
 import math
 import matplotlib.pyplot as plt
+import os 
+import yaml
 
-VERBOSE_PLOT = False
-VMAX = 6
-AMAX = 2  # 3 is risky in simple but works in hard and standard
-LAMBDA_GATES = 4000
-LAMBDA_DRONE = 2000
-LAMBDA_V = 0 #0
-LAMBDA_ACC = 1000  # 1000
-LAMBDA_HEADING = 1000
-LAMBDA_OBST = 4000
-# Say as failure case
-
-# spline, sampleRate, current_gateID, current_gate_pos,
-#                  obs, time, gate_min_dist_knots, obstacles, global_spline
+# load hyperparas from yaml
+filepath = os.path.join('.','planner.yaml')
+with open(filepath, 'r') as file:
+    data = yaml.safe_load(file)
+# load hyperparameters from yaml file
+local_plan_hyperparas = {k: v for d in data['localplan'] for k, v in d.items()}
+VERBOSE_PLOT = local_plan_hyperparas['VERBOSE_PLOT']
+VMAX = local_plan_hyperparas['VMAX']
+AMAX = local_plan_hyperparas['AMAX'] 
+LAMBDA_GATES = local_plan_hyperparas['LAMBDA_GATES']
+LAMBDA_DRONE = local_plan_hyperparas['LAMBDA_DRONE']
+LAMBDA_V = local_plan_hyperparas['LAMBDA_V']
+LAMBDA_ACC = local_plan_hyperparas['LAMBDA_ACC']
+LAMBDA_OBST = local_plan_hyperparas['LAMBDA_OBST']  # 1500 before
+LAMBDA_HEADING = local_plan_hyperparas['LAMBDA_HEADING']
 
 class OnlineLocalReplanner:
 
