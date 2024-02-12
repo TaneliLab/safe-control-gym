@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from enum import Enum
 from functools import wraps
+import os
 
 
 class Command(Enum):
@@ -359,7 +360,10 @@ def plot_real_trajectory(t_scaled,
     axs[3].set_ylabel('acc (m/s-2)', fontsize=12)
     axs[3].set_xlabel('time (sec)', fontsize=12)
     axs[3].legend(loc='lower right', fontsize=13)
-    plt.savefig("results/refvsobs_xyz.png")
+
+    filepath = os.path.join('obs_vs_ref_data', 'refvsobs_xyz.png')
+
+    plt.savefig(filepath)  #"obs_vs_real/refvsobs_xyz.png"
     plt.show(block=False)
     plt.pause(2)
     plt.close()
@@ -370,7 +374,8 @@ def plot_real_trajectory(t_scaled,
     ax.plot3D(ref_x, ref_y, ref_z, label='ref')
     ax.plot3D(obs_x, obs_y, obs_z, label='obs')
     plt.legend()
-    plt.savefig("results/refvsobs_3D.png")
+    filepath = os.path.join('obs_vs_ref_data', 'refvsobs_3D.png')
+    plt.savefig(filepath)
     plt.show(block=False)
     plt.pause(2)
     plt.close()

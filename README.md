@@ -1,12 +1,53 @@
 # IROS 2022 Safe Robot Learning Competition
 
-## Test LC Module
+## Normal Experiment
 ```bash
-    python3 getting_started.py --overrides LC_test.yaml
+    python3 getting_started.py --overrides *.yaml
 ```
 
-choose use edit_this_test or edit_this in getting_started.py 
+## Test LC Module
+```bash
+    python3 getting_started_test.py --overrides LC_test.yaml
+```
+
+choose use edit_this_test or edit_this_real in getting_started.py 
 for switching test or level experiments
+
+## Simulation and hardware test
+!!change the mode in planner.yaml file before running hardware test, note that so far latest changes have not been tested in hardware, unknown problems can happen
+
+!!cmdFullStateCFFirmware_tianle.py is the getting_started file for hardware test, use similar way to update the hardware test,
+note that main changes happen in interStepLearn, args are slightly changed.
+
+## System Design 
+
+# flexibleTrajectoryPlanner
+- SplineFactory: interpolate initial b-spline with numbers of control points(decided by sampleRate)
+- globalplanner: weighted sum of cost optimization for global plan
+- onlinelocalReplanner: online local replaning after approaching to gate(for level2 and level3)
+
+# systemIdentification
+- kRLS: kerneralized Recursive least square adaptive controller
+- standardkRLS: only for testing use, not included in main algorithm
+
+## Config files
+
+# simulation config file
+- level0-3.yaml: ordinary experiments
+- simple_real.yaml: simple testing scene
+- hard_real.yaml: hard testing scene
+- LC_test.yaml: for adaptive controller tests, together with getting_started_testLC.py
+
+# planner config file
+Users can freely check and change the hyperparameters in config files, but the one truly executed is the file planner.yaml
+- planner.yaml: hyperparameters for report
+- fastplanner.yaml: aggressive planning parameters
+
+## Data
+-obs_vs_ref_data stores recorded plots of observation and reference trajectoires.
+-online_plan_data: plot comparision between global and local planning trajectories.
+-plan_data: LC_test, and global plan plots
+
 ## Description
 
 The task is to design a controller/planner that enables a quadrotor (*Crazyflie 2.x*) to **safely fly through a set of gates and reach a predefined target despite uncertainties in the robot dynamics (e.g., mass and inertia) and the environment (e.g., wind and position of the gates)**. The algorithms will be evaluated regarding their safety (e.g., no collisions) and performance (e.g., time to target). We encourage participants to explore both control and reinforcement learning approaches (e.g., robust, adaptive, predictive, learning-based and optimal control, and model-based/model-free reinforcement learning). The controller/planner has access to the position and attitude measurements provided by a motion capture system and the noisy pose of the closest next gate. The controller can [send position, velocity, acceleration and heading references to an onboard position controller](https://crazyswarm.readthedocs.io/en/latest/api.html#pycrazyswarm.crazyflie.Crazyflie.cmdFullState).

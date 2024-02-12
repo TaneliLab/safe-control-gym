@@ -2,16 +2,16 @@ mode: sim  # sim, real
 general:
   - LC_Module: True
   - Planner_Type: replan  # replan, no_replan, only_init
-  - sampleRate: 3
-  - init_flight_time: 12
+  - sampleRate: 4 #3
+  - init_flight_time: 10
   - takeOffTime: 1
   - takeOffHeight: 1
 
 globalplan:
-  - VERBOSE_PLOT: False 
+  - VERBOSE_PLOT: False
   - VERBOSE: False
   - VMAX: 6
-  - AMAX: 3
+  - AMAX: 3 #3
   - LAMBDA_T: 10
   - LAMBDA_GATES: 3000
   - LAMBDA_V: 100
@@ -23,13 +23,13 @@ globalplan:
   - GATE_DT: 0.1
 
 localplan:
-  - VERBOSE_PLOT: False 
+  - VERBOSE_PLOT: False
   - VMAX: 6
-  - AMAX: 2
+  - AMAX: 2  #2
   - LAMBDA_GATES: 4000
   - LAMBDA_DRONE: 2000
   - LAMBDA_V: 0
-  - LAMBDA_ACC: 1000
+  - LAMBDA_ACC: 2000  #1000
   - LAMBDA_HEADING: 1000
   - LAMBDA_OBST: 4000
 
