@@ -23,7 +23,7 @@ globalplan:
   - GATE_DT: 0.1
 
 localplan:
-  - VERBOSE_PLOT: False 
+  - VERBOSE_PLOT: False
   - VMAX: 6
   - AMAX: 2
   - LAMBDA_GATES: 4000
