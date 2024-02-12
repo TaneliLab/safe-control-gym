@@ -29,7 +29,7 @@ try:
 except ImportError:
     # Test import.
     from .competition_utils import Command, thrusts, plot_real_trajectory
-    from .edit_this import Controller
+    from .edit_this_real import Controller
 
 try:
     import pycffirmware
