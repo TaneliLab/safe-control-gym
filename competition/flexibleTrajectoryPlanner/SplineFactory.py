@@ -8,7 +8,17 @@ import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
 
+import os 
+import yaml
 # INIT_FLIGHT_TIME = 12
+# load hyperparas from yaml
+filepath = os.path.join('.','planner.yaml')
+with open(filepath, 'r') as file:
+    data = yaml.safe_load(file)
+# load hyperparameters from yaml file
+MODE = data['mode']
+
+
 class TrajectoryGenerator:
 
     def __init__(self, initial_obs, initial_info, sampleRate,
@@ -73,9 +83,16 @@ class TrajectoryGenerator:
         ways = []
         ways.append(self.start)
         for idx, g in enumerate(self.NOMINAL_GATES):
-            height = self.initial_info["gate_dimensions"]["tall"][
-                "height"] if g[6] == 0 else self.initial_info[
-                    "gate_dimensions"]["low"]["height"]
+            if MODE=="sim":
+                height = self.initial_info["gate_dimensions"]["tall"][
+                    "height"] if g[6] == 0 else self.initial_info[
+                        "gate_dimensions"]["low"]["height"]
+            elif MODE == "real":
+                height = g[2]
+            else:
+                assert(False, "the mode can only be sim for simulation and real for hardware")
+            
+
             ways.append((g[0], g[1], height))
 
         ways.append(self.goal)
@@ -123,9 +140,18 @@ class TrajectoryGenerator:
         delta = 0.2 # control deviation distance from gate
         deltat_scale = 0.1 # control deviation time from gatetime
         for idx, g in enumerate(self.NOMINAL_GATES):
-            height = self.initial_info["gate_dimensions"]["tall"][
-                "height"] if g[6] == 0 else self.initial_info[
-                    "gate_dimensions"]["low"]["height"]
+    
+            if MODE=="sim":
+                height = self.initial_info["gate_dimensions"]["tall"][
+                    "height"] if g[6] == 0 else self.initial_info[
+                        "gate_dimensions"]["low"]["height"]
+            elif MODE == "real":
+                height = g[2]
+            else:
+                assert(False, "the mode can only be sim for simulation and real for hardware")
+            
+
+
             delta_p = [-delta * np.sin(g[5]), delta * np.cos(g[5]), 0]
 
             before_gate_pos = gatePoints[idx, :] - delta_p

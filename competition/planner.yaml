@@ -1,3 +1,4 @@
+mode: sim  # sim, real
 general:
   - LC_Module: True
   - Planner_Type: replan  # replan, no_replan, only_init
@@ -22,7 +23,7 @@ globalplan:
   - GATE_DT: 0.1
 
 localplan:
-  - VERBOSE_PLOT: False
+  - VERBOSE_PLOT: True
   - VMAX: 6
   - AMAX: 2
   - LAMBDA_GATES: 4000

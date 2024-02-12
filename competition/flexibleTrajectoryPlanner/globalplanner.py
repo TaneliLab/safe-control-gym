@@ -12,11 +12,13 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
+
 # load hyperparas from yaml
 filepath = os.path.join('.','planner.yaml')
 with open(filepath, 'r') as file:
     data = yaml.safe_load(file)
 # load hyperparameters from yaml file
+MODE = data['mode']
 global_plan_hyperparas = {k: v for d in data['globalplan'] for k, v in d.items()}
 VERBOSE = global_plan_hyperparas['VERBOSE']
 VERBOSE_PLOT = global_plan_hyperparas['VERBOSE_PLOT']
@@ -87,6 +89,7 @@ class Globalplanner:
 
         self.NOMINAL_GATES = initial_info["nominal_gates_pos_and_type"]
         self.NOMINAL_OBSTACLES = initial_info["nominal_obstacles_pos"]
+
         self.start = (initial_obs[0], initial_obs[2], self.tall_gate_height)
         self.goal = (initial_info["x_reference"][0],
                      initial_info["x_reference"][2],
@@ -154,9 +157,16 @@ class Globalplanner:
         ways = []
         ways.append(self.start)
         for g in self.NOMINAL_GATES:
-            height = self.initial_info["gate_dimensions"]["tall"][
-                "height"] if g[6] == 0 else self.initial_info[
-                    "gate_dimensions"]["low"]["height"]
+
+            if MODE=="sim":
+                height = self.initial_info["gate_dimensions"]["tall"][
+                    "height"] if g[6] == 0 else self.initial_info[
+                        "gate_dimensions"]["low"]["height"]
+            elif MODE == "real":
+                height = g[2]
+            else:
+                assert(False, "the mode can only be sim for simulation and real for hardware")
+            
             ways.append([g[0], g[1], height])
 
         ways.append(self.goal)
@@ -166,6 +176,7 @@ class Globalplanner:
         valid_coeffs_mask = []
         valid_coeffs_index = []
         option = self.valid_mask
+
         # allow all coeffs except start and goal coeffs
         # To exclude the start(first 9 instead of 3) and goal coeffs
         if option == "ALL":
@@ -178,7 +189,7 @@ class Globalplanner:
                 else:
                     valid_coeffs_mask.append(0)
 
-        # only allow time coeffs
+        # only allow updates time coeffs
         elif option == "ONLYTIME":
             for index in range(self.len_control_coeffs +
                                self.len_deltatT_coeffs):
@@ -188,6 +199,7 @@ class Globalplanner:
                 else:
                     valid_coeffs_mask.append(0)
 
+        # only allow updates on pos coeffs
         elif option == "ONLYPOS":
             for index in range(self.len_control_coeffs +
                                self.len_deltatT_coeffs):
@@ -204,8 +216,8 @@ class Globalplanner:
         coeffs = np.reshape(x[0:self.len_control_coeffs], (-1, 3))
         time_coeffs = x[self.len_control_coeffs:]
         # map to 0.8~1.2
-        time_scaling = list(
-            map(lambda x: 0.4 / (1 + np.exp(-x)) + 0.8, time_coeffs))
+        # time_scaling = list(
+        #     map(lambda x: 0.4 / (1 + np.exp(-x)) + 0.8, time_coeffs))
         # map to 0.7~1.3
         time_scaling = list(
             map(lambda x: 0.6 / (1 + np.exp(-x)) + 0.7, time_coeffs))
@@ -324,10 +336,15 @@ class Globalplanner:
         for idx, g in enumerate(self.NOMINAL_GATES):
             # dt = 0.8
 
-            # TODO: make two scheme for simulation and hardware
-            height = self.initial_info["gate_dimensions"]["tall"][
-                "height"] if g[6] == 0 else self.initial_info[
-                    "gate_dimensions"]["low"]["height"]
+            # make two scheme for simulation and hardware
+            if MODE=="sim":
+                height = self.initial_info["gate_dimensions"]["tall"][
+                    "height"] if g[6] == 0 else self.initial_info[
+                        "gate_dimensions"]["low"]["height"]
+            elif MODE == "real":
+                height = g[2]
+            else:
+                assert(False, "the mode can only be sim for simulation and real for hardware")
 
             # idx match to gate knot so we know position to gate
             num_samples = 10
@@ -480,11 +497,20 @@ class Globalplanner:
 
         for idx, g in enumerate(self.NOMINAL_GATES):
 
-            # TODO: positions exclude the time when passing, they are kept safe by heading cost
+            # positions exclude the time when passing, they are kept safe by heading cost
 
-            gate_height = self.initial_info["gate_dimensions"]["tall"][
-                "height"] if g[6] == 0 else self.initial_info[
-                    "gate_dimensions"]["low"]["height"]
+            # gate_height = self.initial_info["gate_dimensions"]["tall"][
+            #     "height"] if g[6] == 0 else self.initial_info[
+            #         "gate_dimensions"]["low"]["height"]
+            
+            if MODE=="sim":
+                gate_height = self.initial_info["gate_dimensions"]["tall"][
+                    "height"] if g[6] == 0 else self.initial_info[
+                        "gate_dimensions"]["low"]["height"]
+            elif MODE == "real":
+                gate_height = g[2]
+            else:
+                assert(False, "the mode can only be sim for simulation and real for hardware")
 
             obst_gate = [g[0], g[1], gate_height]
             dist = np.linalg.norm(positions_risky[:, :2] - obst_gate[:2],
@@ -682,35 +708,6 @@ class Globalplanner:
         #     print("jacobian:", jacobian)
         return jacobian
 
-    def bounds(self):
-
-        # print(self.waypoints)
-        # print(self.coeffs0)
-        # print(self.time_coeffs)
-        n_pos = len(self.coeffs0)
-        n_time = len(self.time_coeffs)
-        lb_x, lb_y, lb_z = -3, -3, -0.1
-        ub_x, ub_y, ub_z = 3, 3, 2
-
-        lb_x, lb_y, lb_z = -30, -30, -10
-        ub_x, ub_y, ub_z = 30, 30, 20
-
-        lower_bounds_pos = np.array([lb_x, lb_y, lb_z] * n_pos)
-        upper_bounds_pos = np.array([ub_x, ub_y, ub_z] * n_pos)
-
-        # lower_bound_acc_velo = np.array([-0.1, -0.1, -0.1] * 2)
-        # upper_bound_acc_velo = np.array([0.1, 0.1, 0.1] * 2)
-
-        lower_bound_time_sigmoid = np.array([-100] * n_time)
-        upper_bound_time_sigmoid = np.array([100] * n_time)
-
-        lower_bounds = np.concatenate(
-            [lower_bounds_pos, lower_bound_time_sigmoid])
-        upper_bounds = np.concatenate(
-            [upper_bounds_pos, upper_bound_time_sigmoid])
-        bounds = opt.Bounds(lower_bounds, upper_bounds)
-        return bounds
-
     def optimizer(self):
 
         #####################Pos Optimize Start#############################
@@ -784,13 +781,13 @@ class Globalplanner:
         vals = self.opt_spline.derivative(1).c
         acc = self.opt_spline.derivative(2).c
 
-        print("spline_velo:", np.linalg.norm(vals, axis=1))
-        print("spline_acc:", np.linalg.norm(acc, axis=1))
-        print("knots_opt:", knots_opt)
-        print("init_coeffs:", self.coeffs0)
-        print("final_coeffs:", coeffs_opt)
-        print("deltaT0:", self.deltaT0)
-        print("deltaT_final:", self.deltaT)
+        # print("spline_velo:", np.linalg.norm(vals, axis=1))
+        # print("spline_acc:", np.linalg.norm(acc, axis=1))
+        # print("knots_opt:", knots_opt)
+        # print("init_coeffs:", self.coeffs0)
+        # print("final_coeffs:", coeffs_opt)
+        # print("deltaT0:", self.deltaT0)
+        # print("deltaT_final:", self.deltaT)
         # copy optimized results
 
         self.t = knots_opt[-1]
@@ -804,9 +801,15 @@ class Globalplanner:
         Sides = []
         for idx, g in enumerate(self.NOMINAL_GATES):
 
-            gate_height = self.initial_info["gate_dimensions"]["tall"][
-                "height"] if g[6] == 0 else self.initial_info[
-                    "gate_dimensions"]["low"]["height"]
+            if MODE=="sim":
+                gate_height = self.initial_info["gate_dimensions"]["tall"][
+                    "height"] if g[6] == 0 else self.initial_info[
+                        "gate_dimensions"]["low"]["height"]
+            elif MODE == "real":
+                gate_height = g[2]
+            else:
+                assert(False, "the mode can only be sim for simulation and real for hardware")
+
             N = np.array([-np.sin(g[5]), np.cos(g[5]), 0])
             N_ = np.array([np.cos(g[5]), np.sin(g[5]), 0])
 
@@ -923,10 +926,10 @@ class Globalplanner:
         ax.plot(p.T[0], p.T[1], p.T[2], label='Opt_Traj')
 
         ax.plot(coeffs[:, 0], coeffs[:, 1], coeffs[:, 2], '*', label='Control_opt')
-        # ax.scatter(self.positions_risky.T[0],
-        #            self.positions_risky.T[1],
-        #            self.positions_risky.T[2],
-        #            label='Risky_areas')
+        ax.scatter(self.positions_risky.T[0],
+                   self.positions_risky.T[1],
+                   self.positions_risky.T[2],
+                   label='Risky_areas')
         # ax.scatter(self.positions_risky_init.T[0], 
         #            self.positions_risky_init.T[1],
         #             self.positions_risky_init.T[2], 
@@ -965,106 +968,39 @@ class Globalplanner:
         plt.pause(2)
         plt.close()
 
-    # def TurningCost_OnlyAngle(self, x, spline):
-    #     cost = 0
-    #     # Get coeffs
-    #     dt = 0.01
-    #     coeffs, deltaT = self.unpackX2deltaT(x)
-    #     knots = self.deltaT2knot(deltaT)
-    #     key_knots = knots[5:-5]  # only middle time of control points
-    #     positions = spline(key_knots)
-    #     positions_prime = spline(key_knots + dt)
-    #     # knots = self.knots[5:-5]
 
-    #     ## Method 1
-    #     # Select only waypoint velo
-    #     velos = (positions_prime - positions) / dt
-    #     # for loop of all two waypoints
-    #     # calculate turning angle(theta) between two waypoints
-    #     # get planned time(delta_t) at two waypoints
-    #     # get theta/delta_t
-    #     for i in range(len(velos) - 1):
-    #         dir_1 = velos[i]
-    #         dir_2 = velos[i + 1]
-    #         cosine_12 = np.dot(
-    #             dir_1, dir_2) / (np.linalg.norm(dir_1) * np.linalg.norm(dir_2))
-    #         angle_in_rads = np.arccos(cosine_12)
-    #         # print(angle_in_rads)
-    #         # print(np.degrees(angle_in_rads))
-    #         cost += angle_in_rads
+# if __name__ == "__main__":
 
-    #     if VERBOSE:
-    #         print("Turning cost only angle: ", cost)
-    #     return cost
+#     # GATES = [[0.5, -2.5, 1.], [2., -1.5, 0.525], [0., 0.2, 0.525],
+#     #          [-0.5, 1.5, 1.]
+#     #          #  [-0.9,  1.0  ,  2.   ]
+#     #          ]
+#     # # real GATES:
+#     # GATES = [[0.47, -0.99, 0.52], [-0.5, 0.03, 1.14], [-0.5, 1.02, 0.57],
+#     #          [0.52, 2.11, 1.15]]
 
-    def TurningCost(self, x, spline):
+#     GATES = [[0.47, -0.99, 0.52, 0, 0, 0.8, 1],
+#       [-0.5, 0.03, 1.14, 0, 0, 0, 0],
+#       [-0.5, 1.02, 0.57, 0, 0, 0, 1],
+#       [0.52, 2.11, 1.15, 0, 0, 0, 0]
+#     ]
+#     #
+#     OBSTACLES = [[1.5, -2.5, 0, 0, 0, 0], [0.5, -1, 0, 0, 0, 0],
+#                  [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0],
+#                  [2, -1.4, 0, 0, 0, 0], [1.8, -1.4, 0, 0, 0, 0],  # extra
+#                  [2.3, -1.4, 0, 0, 0, 0], [0, 0.23, 0, 0, 0, 0]]  # extra
 
-        cost = 0
-        # Get control points
-        # key_time = self.knots[5:-5]
-        dt = 0.02
-        # deltaT = x[self.len_control_coeffs:]
-        coeffs, deltaT = self.unpackX2deltaT(x)
-        knots = self.deltaT2knot(deltaT)
-        key_knots = knots[5:-5]  # only middle time of control points
-        positions = spline(key_knots)
-        positions_prime = spline(key_knots + dt)
-        # knots = self.knots[5:-5]
+#     # OBSTACLES = [[1.5, -2.5, 0, 0, 0, 0], [0.5, -1, 0, 0, 0, 0],
+#     #              [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0]]
+#     # OBSTACLES = []
+#     X0 = [-0.9, -2.9, 0.03]
 
-        ## Method 1
-        # Select only waypoint velo
-        velos = (positions_prime - positions) / dt
-        # for loop of all two waypoints
-        # calculate turning angle(theta) between two waypoints
-        # get planned time(delta_t) at two waypoints
-        # get theta/delta_t
-        for i in range(len(velos) - 1):
-            dir_1 = velos[i]
-            dir_2 = velos[i + 1]
-            cosine_12 = np.dot(
-                dir_1, dir_2) / (np.linalg.norm(dir_1) * np.linalg.norm(dir_2))
-            angle_in_rads = np.arccos(cosine_12)
-            delta_t = key_knots[i + 1] - key_knots[i]
-            # print(angle_in_rads)
-            # print(np.degrees(angle_in_rads))
-            cost += angle_in_rads / delta_t
+#     GOAL = [-0.5, 2.9, 0.75]
 
-        if VERBOSE:
-            print("Turning cost: ", cost)
-        return cost
+#     trajGen = TrajectoryGenerator(X0, GOAL, GATES, OBSTACLES, 3)
+#     traj = trajGen.spline
 
-if __name__ == "__main__":
-
-    # GATES = [[0.5, -2.5, 1.], [2., -1.5, 0.525], [0., 0.2, 0.525],
-    #          [-0.5, 1.5, 1.]
-    #          #  [-0.9,  1.0  ,  2.   ]
-    #          ]
-    # # real GATES:
-    # GATES = [[0.47, -0.99, 0.52], [-0.5, 0.03, 1.14], [-0.5, 1.02, 0.57],
-    #          [0.52, 2.11, 1.15]]
-
-    GATES = [[0.47, -0.99, 0.52, 0, 0, 0.8, 1],
-      [-0.5, 0.03, 1.14, 0, 0, 0, 0],
-      [-0.5, 1.02, 0.57, 0, 0, 0, 1],
-      [0.52, 2.11, 1.15, 0, 0, 0, 0]
-    ]
-    #
-    OBSTACLES = [[1.5, -2.5, 0, 0, 0, 0], [0.5, -1, 0, 0, 0, 0],
-                 [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0],
-                 [2, -1.4, 0, 0, 0, 0], [1.8, -1.4, 0, 0, 0, 0],  # extra
-                 [2.3, -1.4, 0, 0, 0, 0], [0, 0.23, 0, 0, 0, 0]]  # extra
-
-    # OBSTACLES = [[1.5, -2.5, 0, 0, 0, 0], [0.5, -1, 0, 0, 0, 0],
-    #              [1.5, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0]]
-    # OBSTACLES = []
-    X0 = [-0.9, -2.9, 0.03]
-
-    GOAL = [-0.5, 2.9, 0.75]
-
-    trajGen = TrajectoryGenerator(X0, GOAL, GATES, OBSTACLES, 3)
-    traj = trajGen.spline
-
-    trajReplanar = Globalplanner(traj, X0, GOAL, GATES, OBSTACLES)
-    trajReplanar.optimizer()
-    # trajReplanar.plot_xyz()
-    # trajReplanar.plot()
+#     trajReplanar = Globalplanner(traj, X0, GOAL, GATES, OBSTACLES)
+#     trajReplanar.optimizer()
+#     # trajReplanar.plot_xyz()
+#     # trajReplanar.plot()

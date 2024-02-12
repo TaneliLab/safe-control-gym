@@ -16,6 +16,7 @@ import yaml
 filepath = os.path.join('.','planner.yaml')
 with open(filepath, 'r') as file:
     data = yaml.safe_load(file)
+MODE = data['mode']
 # load hyperparameters from yaml file
 local_plan_hyperparas = {k: v for d in data['localplan'] for k, v in d.items()}
 VERBOSE_PLOT = local_plan_hyperparas['VERBOSE_PLOT']
@@ -102,10 +103,6 @@ class OnlineLocalReplanner:
         x_temp = x.reshape(3, -1)  # flatten to array
         # substite three control points: one before gate, one gate, one after gate
         coeffs[(self.coeffs_id_gate - 1):(self.coeffs_id_gate + 2)] = x_temp[:]
-        # print("self.coeffs_id_gate :", self.coeffs_id_gate)
-        # print("x:", x_temp)
-        # print("self.coeffs:", self.coeffs)
-        # print("coeffs:", coeffs)
         if math.isnan(x_temp[0][0]):
             assert False
         return coeffs
@@ -121,7 +118,7 @@ class OnlineLocalReplanner:
     def numeric_jacobian(self, x):
         # flatten way
         jacobian = []
-        dt = 0.01
+        dt = 0.01 # for gradient compute
         for i in range(x.shape[0]):
             new_x = copy.copy(x)
             new_x[i] += dt
