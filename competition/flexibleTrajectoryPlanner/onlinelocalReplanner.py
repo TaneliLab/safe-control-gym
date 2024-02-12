@@ -271,7 +271,7 @@ class OnlineLocalReplanner:
         return cost
 
     def plot_xyz(self):
-        _, axs = plt.subplots(3, 1, figsize=(15, 8))
+        _, axs = plt.subplots(3, 1, figsize=(13, 7),dpi=300)
         time = self.t * np.linspace(0, 1, 100)
         coeffs = self.opt_spline.c
         knots = self.opt_spline.t
@@ -289,34 +289,36 @@ class OnlineLocalReplanner:
 
         p = self.opt_spline(time)
         p_init = self.global_spline(time)
+        # Plot for the x-axis
         axs[0].plot(time, p.T[0], label='local_plan_x')
         axs[0].plot(time, p_init.T[0], label='global_plan_x')
-        #  axs[0].scatter(self.opt_spline.t[3:-3], x_coeffs, label='control_x')
-        axs[0].scatter(self.gate_min_dist_knots,
-                       true_gate_x,marker='o',s=70,
-                       label='gate')
-        axs[0].scatter(self.current_flight_time_stack,
-                       drone_x, marker='*',s=70,
-                       label='drone')
+        axs[0].scatter(self.gate_min_dist_knots, true_gate_x, marker='o', s=70, label='gate')
+        axs[0].scatter(self.current_flight_time_stack, drone_x, marker='*', s=70, label='drone')
         axs[0].legend()
+        axs[0].set_ylabel('x (m)')  # Adding unit to Y-axis label for the first subplot
+
+        # Plot for the y-axis
         axs[1].plot(time, p.T[1], label='local_plan_y')
         axs[1].plot(time, p_init.T[1], label='global_plan_y')
-        axs[1].scatter(self.gate_min_dist_knots,
-                       true_gate_y,marker='o',s=70,
-                       label='gate')
-        axs[1].scatter(self.current_flight_time_stack,
-                       drone_y, marker='*',s=70,
-                       label='drone')
+        axs[1].scatter(self.gate_min_dist_knots, true_gate_y, marker='o', s=70, label='gate')
+        axs[1].scatter(self.current_flight_time_stack, drone_y, marker='*', s=70, label='drone')
         axs[1].legend()
+        axs[1].set_ylabel('y (m)')  # Adding unit to Y-axis label for the second subplot
+
+        # Plot for the z-axis
         axs[2].plot(time, p.T[2], label='local_plan_z')
         axs[2].plot(time, p_init.T[2], label='global_plan_z')
-        axs[2].scatter(self.gate_min_dist_knots,
-                       true_gate_z,marker='o',s=70,
-                       label='gate')
-        axs[2].scatter(self.current_flight_time_stack,
-                       drone_z, marker='*',s=70,
-                       label='drone')
+        axs[2].scatter(self.gate_min_dist_knots, true_gate_z, marker='o', s=70, label='gate')
+        axs[2].scatter(self.current_flight_time_stack, drone_z, marker='*', s=70, label='drone')
         axs[2].legend()
+        axs[2].set_ylabel('z (m)')  # Adding unit to Y-axis label for the third subplot
+
+        # Since time is common for all plots and typically only the bottom plot gets an X-axis label:
+        axs[2].set_xlabel('time (sec)')  # Adding unit to X-axis label
+
+        # Optionally, to improve readability, you might want to adjust subplot spacing
+        plt.tight_layout()
+
         plt.savefig("./online_plan_data/global_vs_local_xyz.png")
         plt.show()
 
@@ -333,33 +335,44 @@ class OnlineLocalReplanner:
         p_init = self.global_spline(time)
         axs[0].plot(time, p.T[0], label='opt_x')
         axs[0].plot(time, p_init.T[0], label='init_x')
-        #  axs[0].scatter(self.opt_spline.t[3:-3], x_coeffs, label='control_x')
         axs[0].scatter(self.gate_min_dist_knots[self.current_gateID],
-                       self.current_gate_pos[0],marker='o',s=20,
-                       label='gate')
+                    self.current_gate_pos[0], marker='o', s=20,
+                    label='gate')
         axs[0].scatter(self.current_time,
-                       self.current_drone_pos[0], marker='*',s=20,
-                       label='drone')
+                    self.current_drone_pos[0], marker='*', s=20,
+                    label='drone')
         axs[0].legend()
+        axs[0].set_ylabel('x (m)')  # Set Y-axis label for the first subplot
+
         axs[1].plot(time, p.T[1], label='opt_y')
         axs[1].plot(time, p_init.T[1], label='init_y')
         axs[1].scatter(self.gate_min_dist_knots[self.current_gateID],
-                       self.current_gate_pos[1],
-                       label='gate')
+                    self.current_gate_pos[1],
+                    label='gate')
         axs[1].scatter(self.current_time,
-                       self.current_drone_pos[1], marker='*',s=20,
-                       label='drone')
+                    self.current_drone_pos[1], marker='*', s=20,
+                    label='drone')
         axs[1].legend()
+        axs[1].set_ylabel('y (m)')  # Set Y-axis label for the second subplot
+
         axs[2].plot(time, p.T[2], label='opt_z')
         axs[2].plot(time, p_init.T[2], label='init_z')
         axs[2].scatter(self.gate_min_dist_knots[self.current_gateID],
-                       self.current_gate_pos[2],
-                       label='gate')
+                    self.current_gate_pos[2],
+                    label='gate')
         axs[2].scatter(self.current_time,
-                       self.current_drone_pos[2],
-                       label='drone')
+                    self.current_drone_pos[2],
+                    label='drone')
         axs[2].legend()
-        # plt.savefig("./online_plan_data/global_vs_local_xyz.png")
+        axs[2].set_ylabel('z (m)')  # Set Y-axis label for the third subplot
+
+        # Set X-axis label for the bottom subplot (since it's the only one with an x-axis visible in this layout)
+        axs[2].set_xlabel('time (sec)')
+
+        # Optionally, to improve readability, you might want to adjust subplot spacing
+        plt.tight_layout()
+
+        # Your existing code for displaying the plot
         plt.show(block=False)
         plt.pause(1)
         plt.close()

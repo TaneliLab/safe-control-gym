@@ -843,7 +843,7 @@ class Globalplanner:
     def plot_xyz(self):
         """Plot the xyz trajectory
         """
-        _, axs = plt.subplots(3, 1, dpi=300)
+        _, axs = plt.subplots(3, 1, figsize=(13, 7), dpi=300)
         knot0 = self.deltaT2knot(self.deltaT0)
         knot = self.deltaT2knot(self.deltaT)
 
@@ -866,43 +866,42 @@ class Globalplanner:
         print("t:", self.opt_spline.t)
         print("pos:", x_coeffs)
 
+        # Plotting for the x-axis
         axs[0].plot(time, p.T[0], label='opt_spline')
         axs[0].plot(init_time, p_init.T[0], label='init_spline')
-        axs[0].scatter(self.opt_spline.t[3:-3],
-                       x_coeffs,
-                       label='control_opt_x')
-        
-        axs[0].scatter(self.init_spline.t[3:-3],
-                       x_init_coeffs,
-                       label='control_init_x')
-
-
+        axs[0].scatter(self.opt_spline.t[3:-3], x_coeffs, label='control_opt_x')
+        axs[0].scatter(self.init_spline.t[3:-3], x_init_coeffs, label='control_init_x')
         axs[0].legend()
+        axs[0].set_ylabel('x (m)')  # Set Y-axis label with unit for the first subplot
+
+        # Plotting for the y-axis
         axs[1].plot(time, p.T[1], label='opt_y')
         axs[1].plot(init_time, p_init.T[1], label='init_y')
-        # opt control points
-        axs[1].scatter(self.opt_spline.t[3:-3],
-                       y_coeffs,
-                       label='control_opt_y')
-        # init control points
-        axs[1].scatter(self.init_spline.t[3:-3],
-                y_init_coeffs,
-                label='control_init_y')
-        # axs[1].legend()
+        axs[1].scatter(self.opt_spline.t[3:-3], y_coeffs, label='control_opt_y')
+        axs[1].scatter(self.init_spline.t[3:-3], y_init_coeffs, label='control_init_y')
+        axs[1].legend()
+        axs[1].set_ylabel('y (m)')  # Set Y-axis label with unit for the second subplot
 
+        # Plotting for the z-axis
         axs[2].plot(time, p.T[2], label='opt_z')
         axs[2].plot(init_time, p_init.T[2], label='init_z')
-        axs[2].scatter(self.opt_spline.t[3:-3],
-                       z_coeffs,
-                       label='control_opt_z')
-        axs[2].scatter(self.init_spline.t[3:-3],
-                        z_init_coeffs,
-                        label='control_init_z')
-        # axs[2].legend()
+        axs[2].scatter(self.opt_spline.t[3:-3], z_coeffs, label='control_opt_z')
+        axs[2].scatter(self.init_spline.t[3:-3], z_init_coeffs, label='control_init_z')
+        axs[2].legend()
+        axs[2].set_ylabel('z (m)')  # Set Y-axis label with unit for the third subplot
+
+        # Set X-axis label with unit for the bottom subplot
+        axs[2].set_xlabel('time (sec)')
+
+        # Optionally, to improve readability, adjust subplot spacing
+        plt.tight_layout()
+
+        # Your existing code for displaying the plot
         plt.savefig("./plan_data/global_xyz_plan.jpg")
         plt.show(block=False)
         plt.pause(2)
         plt.close()
+
 
     def plot(self):
         """Plot the 3d trajectory
@@ -922,7 +921,7 @@ class Globalplanner:
         ax.set_zlim([0, 2])
 
         ax.grid(False)
-        ax.plot(p_init.T[0], p_init.T[1], p_init.T[2], label='Init_Traj')
+        # ax.plot(p_init.T[0], p_init.T[1], p_init.T[2], label='Init_Traj')
         ax.plot(p.T[0], p.T[1], p.T[2], label='Opt_Traj')
 
         ax.plot(coeffs[:, 0], coeffs[:, 1], coeffs[:, 2], '*', label='Control_opt')

@@ -8,7 +8,7 @@ general:
   - takeOffHeight: 1
 
 globalplan:
-  - VERBOSE_PLOT: False
+  - VERBOSE_PLOT: True
   - VERBOSE: False
   - VMAX: 6
   - AMAX: 3
