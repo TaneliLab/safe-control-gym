@@ -44,9 +44,9 @@ Users can freely check and change the hyperparameters in config files, but the o
 - fastplanner.yaml: aggressive planning parameters
 
 ## Data
--obs_vs_ref_data stores recorded plots of observation and reference trajectoires.
--online_plan_data: plot comparision between global and local planning trajectories.
--plan_data: LC_test, and global plan plots
+- obs_vs_ref_data stores recorded plots of observation and reference trajectoires.
+- online_plan_data: plot comparision between global and local planning trajectories.
+- plan_data: LC_test, and global plan plots
 
 ## Description
 
