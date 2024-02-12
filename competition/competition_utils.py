@@ -339,13 +339,13 @@ def plot_real_trajectory(t_scaled,
     axs[0].plot(t_scaled, obs_x, label='obs_x')
     axs[0].plot(t_scaled, ref_x, label='ref_x')
     axs[0].set_ylabel('x (m)', fontsize=12)
-    axs[0].set_xlabel('time (s)', fontsize=12)
+    # axs[0].set_xlabel('time (s)', fontsize=12)
     axs[0].legend(loc='lower right', fontsize=13)
 
     axs[1].plot(t_scaled, obs_y, label='obs_y')
     axs[1].plot(t_scaled, ref_y, label='ref_y')
     axs[1].set_ylabel('y (m)', fontsize=12)
-    axs[1].set_xlabel('time (sec)', fontsize=12)
+    # axs[1].set_xlabel('time (sec)', fontsize=12)
     axs[1].legend(loc='lower right', fontsize=13)
 
     axs[2].plot(t_scaled, obs_z, label='obs_z')
