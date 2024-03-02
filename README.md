@@ -1,4 +1,3 @@
-# IROS 2022 Safe Robot Learning Competition
 
 ## Normal Experiment
 ```bash
@@ -48,7 +47,7 @@ Users can freely check and change the hyperparameters in config files, but the o
 - online_plan_data: plot comparision between global and local planning trajectories.
 - plan_data: LC_test, and global plan plots
 
-## Description
+## Description (from IROS 2022 Safe Robot Learning Competition)
 
 The task is to design a controller/planner that enables a quadrotor (*Crazyflie 2.x*) to **safely fly through a set of gates and reach a predefined target despite uncertainties in the robot dynamics (e.g., mass and inertia) and the environment (e.g., wind and position of the gates)**. The algorithms will be evaluated regarding their safety (e.g., no collisions) and performance (e.g., time to target). We encourage participants to explore both control and reinforcement learning approaches (e.g., robust, adaptive, predictive, learning-based and optimal control, and model-based/model-free reinforcement learning). The controller/planner has access to the position and attitude measurements provided by a motion capture system and the noisy pose of the closest next gate. The controller can [send position, velocity, acceleration and heading references to an onboard position controller](https://crazyswarm.readthedocs.io/en/latest/api.html#pycrazyswarm.crazyflie.Crazyflie.cmdFullState).
 
@@ -59,7 +58,7 @@ We recommend Ubuntu 20.04 on a mid-tier laptop and GPU (e.g., a Lenovo P52 with 
 ```bash
 git clone https://github.com/utiasDSL/safe-control-gym.git
 cd safe-control-gym
-git checkout beta-iros-competition
+git checkout main
 ```
 
 Create and access a Python 3.8 environment using
@@ -257,59 +256,6 @@ edit_this.py : Controller.interEpisodeLearn(...)    # Update the controller's in
 
     Returns: N/A
 ```
-
-## Submission
-
-- Fork this repository ([help](https://docs.github.com/en/get-started/quickstart/fork-a-repo))
-- Checkout this branch (`beta-iros-competition`)
-- Implement your solution by modifying [`edit_this.py`](https://github.com/utiasDSL/safe-control-gym/blob/beta-iros-competition/competition/edit_this.py)
-- Create a Pull Request into `utiasDSL/safe-control-gym:beta-iros-competition` from your fork ([help](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork))
-- Mention in the Pull Request's Conversation tab (i) how many `num_episodes` you want your solution to use in each level (mandatory) and (ii) what method(s) you used and results you obtained (optional)
-- Tag @JacopoPan in the Pull Request's Conversation tab
-
-### Note: Private Submissions
-
-If you prefer not to publicly disclose your solution implementation, you can instead create a [private import of this repository](https://docs.github.com/en/get-started/importing-your-projects-to-github/importing-source-code-to-github/importing-a-repository-with-github-importer) to develop it and give access to @JacopoPan and @utiasDSLadmin, or even send your `edit_this.py` to jacopo.panerati@utoronto.ca. In this case, please submit early to allow the time to run extra checks.
-
-## Scoring (v0.3)
-
-A) For ALL levels (0-3, sim2real), solutions will be evaluated—on the **last episode**—by:
-
-- **Safety**: avoid ALL *collisions* with gates & obstacles and *constraint violations*—i.e., only runs with 0 collisions/violations will count as TASK COMPLETION
-- **Performance**: minimizing the *task time* (in sec.) required to complete the task (fly through all the gates and reach the goal)
-
-B) For ALL levels (0-3, sim2real), solutions that accomplish A) will be evaluated—across **all episodes**—by:
-
-- **Data & compute efficiency**: minimizing the *simulation/flight-clock time of the [no. of episodes](https://github.com/utiasDSL/safe-control-gym/blob/beta-iros-competition/competition/getting_started.yaml#L2)* (in sec.) plus their overall *wall-clock learning time* (in sec.) used by [`interStepLearn()`](https://github.com/utiasDSL/safe-control-gym/blob/beta-iros-competition/competition/edit_this.py#L288) and [`interEpisodeLearn()`](https://github.com/utiasDSL/safe-control-gym/blob/beta-iros-competition/competition/edit_this.py#L328) to improve performance
-
-C) For ALL levels (0-3, sim2real), the top 3 solutions ranked by the criteria in A) and the top 3 solutions ranked by the criteria in B) will score 20, 10, and 5 points respectively. The sum of these points will determine the final classification.
-
-![terminal output](./figures/terminal1.png)
-
-## Important Dates
-
-- IROS Conference and Competition days: October 24-26, 2022
-
-## Prizes
-
-Kindly supported by [Bitcraze](https://www.bitcraze.io):
-
-- 1st: [Bitcraze Crazyflie AI Bundle](https://store.bitcraze.io/collections/bundles/products/the-ai-bundle)
-- 2nd: [Bitcraze Crazyflie STEM Ranging Bundle](https://store.bitcraze.io/collections/bundles/products/stem-ranging-bundle)
-- 3rd: [Bitcraze Crazyflie STEM Bundle](https://store.bitcraze.io/collections/bundles/products/stem-drone-bundle)
-
-The authors of the best solutions will be invited to co-author a "lessons learned" paper with the organizers.
-
-## Winners
-
-Congratulations to the winning teams!
-
-- 1st: Team H^2 (Niu Xinyuan, Hashir Zahir, and Huiyu Leong from Singapore)
-- 2nd: Team Ekuflie (Michel Hidalgo, Gerardo Puga, Tomas Lorente, Nahuel Espinosa, and John Alejandro Duarte Carrasco from Ekumen)
-- 3rd: Team ustc-arg (Kaizheng Zhang, Jian Di, Tao Jin, Xiaohan Li, Yijia Zhou, Xiuhua Liang, and Chenxu Zhang from the University of Science and Technology of China)
-
-[![video](https://img.youtube.com/vi/C6PZYJ5R1MI/maxresdefault.jpg)](https://www.youtube.com/watch?v=C6PZYJ5R1MI)
-
 ## A Discussion on the Competition
 
 ```bibtex
