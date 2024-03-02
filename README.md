@@ -1,8 +1,11 @@
+[![Watch the video](https://img.youtube.com/vi/9lvcyOZSRO8/hqdefault.jpg)](https://www.youtube.com/watch?v=9lvcyOZSRO8)
 
-## Normal Experiment
+## Run Experiment
 ```bash
     python3 getting_started.py --overrides *.yaml
 ```
+
+Detail building attached in the following
 
 ## Test LC Module
 ```bash
