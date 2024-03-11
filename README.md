@@ -1,5 +1,5 @@
 ## Demo in simulation and real hardware
-# First simulation, then in real world
+First simulation, then in real world
 [![Watch the video](https://img.youtube.com/vi/9lvcyOZSRO8/hqdefault.jpg)](https://www.youtube.com/watch?v=9lvcyOZSRO8)
 
 ## Run Experiment
@@ -8,6 +8,7 @@
 ```
 
 Detail building process attached in the Description (from IROS 2022 Safe Robot Learning Competition)
+
 !Check for building
 
 ## Test LC Module
