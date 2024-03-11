@@ -7,7 +7,8 @@
     python3 getting_started.py --overrides *.yaml
 ```
 
-Detail building attached in the following
+Detail building process attached in the Description (from IROS 2022 Safe Robot Learning Competition)
+!Check for building
 
 ## Test LC Module
 ```bash
@@ -45,7 +46,7 @@ note that main changes happen in interStepLearn, args are slightly changed.
 # planner config file
 Users can freely check and change the hyperparameters in config files, but the one truly executed is the file planner.yaml
 
-!! file address error remains to be solved by pathlib, it may cause error when running in other machines.
+!! file address error remains to be solved by pathlib a.s.a.p , it may cause error when running in other machines.
 
 - planner.yaml: hyperparameters for report
 - fastplanner.yaml: aggressive planning parameters
