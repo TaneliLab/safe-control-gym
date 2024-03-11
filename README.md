@@ -43,8 +43,10 @@ note that main changes happen in interStepLearn, args are slightly changed.
 - LC_test.yaml: for adaptive controller tests, together with getting_started_testLC.py
 
 # planner config file
-Users can freely check and change the hyperparameters in config files, but the one truly executed is the file planner.yaml \\
+Users can freely check and change the hyperparameters in config files, but the one truly executed is the file planner.yaml
+
 !! file address error remains to be solved by pathlib, it may cause error when running in other machines.
+
 - planner.yaml: hyperparameters for report
 - fastplanner.yaml: aggressive planning parameters
 
